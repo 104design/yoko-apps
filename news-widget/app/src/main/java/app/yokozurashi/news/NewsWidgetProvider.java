@@ -35,8 +35,14 @@ public class NewsWidgetProvider extends AppWidgetProvider {
     }
 
     @Override
+    public void onEnabled(Context context) {
+        RefreshJob.runSoon(context);
+    }
+
+    @Override
     public void onDisabled(Context context) {
         DateAlarm.cancel(context);
+        RefreshJob.cancelAll(context);
     }
 
     private static int[] ids(Context context, AppWidgetManager manager) {
@@ -50,9 +56,9 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         if (ids == null || ids.length == 0) return;
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_news);
-        // 天気はまだ取得していないので「取れていないとき」の表示（SPEC.md 仕様書2）
         views.setImageViewBitmap(R.id.date_block,
-                DateBlock.render(context, Calendar.getInstance(), "--°", "現在地"));
+                DateBlock.render(context, Calendar.getInstance(), Weather.kind(context),
+                        Weather.tempText(context), weatherLabel(context)));
         bindNews(context, views);
 
         Intent app = new Intent(context, MainActivity.class);
@@ -64,6 +70,18 @@ public class NewsWidgetProvider extends AppWidgetProvider {
 
         manager.updateAppWidget(ids, views);
         DateAlarm.schedule(context);
+        RefreshJob.ensureScheduled(context);
+    }
+
+    /** 気温の横に出す言葉。「晴れ・渋谷区」、取れていないときは「現在地」など（SPEC.md 仕様書2・3）。 */
+    private static String weatherLabel(Context context) {
+        if (!LocationHelper.hasPermission(context) && !LocationHelper.hasLocation(context)) {
+            return "位置情報を許可";
+        }
+        String place = LocationHelper.place(context);
+        if (place == null) place = "現在地";
+        String word = Weather.word(context);
+        return word == null ? place : word + "・" + place;
     }
 
     /** ニュースの帯だけを差し替える。よこずらしのアニメや日付は触らない。 */
@@ -78,14 +96,22 @@ public class NewsWidgetProvider extends AppWidgetProvider {
 
     private static void bindNews(Context context, RemoteViews views) {
         NewsStore.Item item = NewsStore.current(context);
-        views.setTextViewText(R.id.news_marquee, item.line());
-
-        Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(item.url));
-        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent article = PendingIntent.getActivity(context, 1, open,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.band, article);
-        views.setOnClickPendingIntent(R.id.news_marquee, article);
+        PendingIntent tap;
+        if (item == null) {
+            // 一覧がまだないとき。短い文なので流れない。タップでアプリを開く
+            views.setTextViewText(R.id.news_marquee, NewsStore.tried(context)
+                    ? "ニュースを取得できませんでした" : "ニュースを読み込み中…");
+            tap = PendingIntent.getActivity(context, 2, new Intent(context, MainActivity.class),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        } else {
+            views.setTextViewText(R.id.news_marquee, item.line());
+            Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(item.url));
+            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            tap = PendingIntent.getActivity(context, 1, open,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        views.setOnClickPendingIntent(R.id.band, tap);
+        views.setOnClickPendingIntent(R.id.news_marquee, tap);
 
         Intent shuffle = new Intent(context, NewsWidgetProvider.class);
         shuffle.setAction(ACTION_SHUFFLE);

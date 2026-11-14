@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.text.TextPaint;
@@ -39,10 +40,11 @@ public class DateBlock {
     private static final float DIGIT_GAP = 3;
 
     /**
+     * @param kind  天気アイコンの種類（Weather.SUN など）。Weather.NONE ならアイコンなし
      * @param temp  気温の表示（例「18°」）。取れていないときは「--°」
      * @param label 天気と地名（例「晴れ・渋谷区」）。なければ null
      */
-    public static Bitmap render(Context ctx, Calendar now, String temp, String label) {
+    public static Bitmap render(Context ctx, Calendar now, int kind, String temp, String label) {
         Resources res = ctx.getResources();
         float d = res.getDisplayMetrics().density;
         Bitmap bmp = Bitmap.createBitmap(Math.round(WIDTH_DP * d), Math.round(HEIGHT_DP * d),
@@ -71,6 +73,13 @@ public class DateBlock {
         // 3行目：気温と、天気・地名
         TextPaint tempPaint = text(black, 22, INK);
         float tx = 0;
+        if (kind != Weather.NONE) {
+            c.save();
+            c.translate(0, bottom + 23);
+            drawIcon(c, kind);
+            c.restore();
+            tx = 24 + 6;
+        }
         c.drawText(temp, tx, bottom + 43, tempPaint);
         tx += tempPaint.measureText(temp) + 6;
         if (label != null && label.length() > 0) {
@@ -79,6 +88,57 @@ public class DateBlock {
             c.drawText(fit, 0, fit.length(), tx, bottom + 41, labelPaint);
         }
         return bmp;
+    }
+
+    /** 天気の線アイコンを、24×24 の枠の中に描く（仮のアイコン。手描きに差し替える余地を残す）。 */
+    private static void drawIcon(Canvas c, int kind) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(2);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        p.setColor(INK);
+        if (kind == Weather.SUN) {
+            c.drawCircle(12, 12, 4.2f, p);
+            for (int i = 0; i < 8; i++) {
+                double a = Math.PI / 4 * i;
+                float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+                c.drawLine(12 + cos * 7.1f, 12 + sin * 7.1f, 12 + cos * 9.5f, 12 + sin * 9.5f, p);
+            }
+            return;
+        }
+        if (kind == Weather.FOG) {
+            c.drawLine(4, 8, 20, 8, p);
+            c.drawLine(4, 12.5f, 20, 12.5f, p);
+            c.drawLine(4, 17, 20, 17, p);
+            return;
+        }
+        // 雲。雨・雪・雷は雲を上に寄せて、下にしるしを描く
+        float dy = kind == Weather.CLOUD ? 3 : 0;
+        Path cloud = new Path();
+        cloud.moveTo(7, 15 + dy);
+        cloud.cubicTo(2.5f, 15 + dy, 2.5f, 9 + dy, 7, 9 + dy);
+        cloud.cubicTo(7.5f, 4 + dy, 15, 3.5f + dy, 16, 8.5f + dy);
+        cloud.cubicTo(21.5f, 8 + dy, 21.5f, 15 + dy, 17, 15 + dy);
+        cloud.close();
+        c.drawPath(cloud, p);
+        if (kind == Weather.RAIN) {
+            c.drawLine(8, 18.5f, 7, 21.5f, p);
+            c.drawLine(12.5f, 18.5f, 11.5f, 21.5f, p);
+            c.drawLine(17, 18.5f, 16, 21.5f, p);
+        } else if (kind == Weather.SNOW) {
+            p.setStyle(Paint.Style.FILL);
+            c.drawCircle(8, 20, 1.3f, p);
+            c.drawCircle(12.5f, 20, 1.3f, p);
+            c.drawCircle(17, 20, 1.3f, p);
+        } else if (kind == Weather.THUNDER) {
+            Path bolt = new Path();
+            bolt.moveTo(13, 17);
+            bolt.lineTo(10.5f, 20);
+            bolt.lineTo(13.5f, 20);
+            bolt.lineTo(11.5f, 23);
+            c.drawPath(bolt, p);
+        }
     }
 
     /** 手描き数字を並べて描き、描き終えた右端の x を返す。 */
