@@ -21,7 +21,8 @@ import java.util.Calendar;
  * 寸法は SPEC.md の「仕様書 1: 画面」。単位は dp。
  */
 public class DateBlock {
-    public static final int WIDTH_DP = 160;
+    public static final int MAX_WIDTH_DP = 160;
+    public static final int MIN_WIDTH_DP = 110;
     public static final int HEIGHT_DP = 100;
 
     private static final int INK = 0xFF141414;
@@ -40,14 +41,16 @@ public class DateBlock {
     private static final float DIGIT_GAP = 3;
 
     /**
+     * @param widthDp このブロックに使える幅。右のキャラに重ならないよう、ウィジェットの幅から決める
      * @param kind  天気アイコンの種類（Weather.SUN など）。Weather.NONE ならアイコンなし
      * @param temp  気温の表示（例「18°」）。取れていないときは「--°」
      * @param label 天気と地名（例「晴れ・渋谷区」）。なければ null
      */
-    public static Bitmap render(Context ctx, Calendar now, int kind, String temp, String label) {
+    public static Bitmap render(Context ctx, Calendar now, int widthDp, int kind, String temp, String label) {
         Resources res = ctx.getResources();
         float d = res.getDisplayMetrics().density;
-        Bitmap bmp = Bitmap.createBitmap(Math.round(WIDTH_DP * d), Math.round(HEIGHT_DP * d),
+        widthDp = Math.max(MIN_WIDTH_DP, Math.min(MAX_WIDTH_DP, widthDp));
+        Bitmap bmp = Bitmap.createBitmap(Math.round(widthDp * d), Math.round(HEIGHT_DP * d),
                 Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
         c.scale(d, d); // 以降は dp で描く
@@ -66,27 +69,28 @@ public class DateBlock {
         x = drawNumber(c, res, img, now.get(Calendar.DAY_OF_MONTH), x);
         c.drawText("日", x, bottom - 2, unit);
 
-        // 2行目：曜日
+        // 2行目：曜日と、天気・地名
         TextPaint week = text(bold, 13, MAGENTA);
-        c.drawText(WEEKDAYS[now.get(Calendar.DAY_OF_WEEK) - 1], 0, bottom + 16, week);
+        String weekday = WEEKDAYS[now.get(Calendar.DAY_OF_WEEK) - 1];
+        c.drawText(weekday, 0, bottom + 16, week);
+        if (label != null && label.length() > 0) {
+            float lx = week.measureText(weekday) + 8;
+            TextPaint labelPaint = text(bold, 11, GRAY);
+            CharSequence fit = TextUtils.ellipsize(label, labelPaint, widthDp - lx, TextUtils.TruncateAt.END);
+            c.drawText(fit, 0, fit.length(), lx, bottom + 15.5f, labelPaint);
+        }
 
-        // 3行目：気温と、天気・地名
+        // 3行目：天気アイコンと気温
         TextPaint tempPaint = text(black, 22, INK);
         float tx = 0;
         if (kind != Weather.NONE) {
             c.save();
-            c.translate(0, bottom + 23);
+            c.translate(0, bottom + 21);
             drawIcon(c, kind);
             c.restore();
             tx = 24 + 6;
         }
-        c.drawText(temp, tx, bottom + 43, tempPaint);
-        tx += tempPaint.measureText(temp) + 6;
-        if (label != null && label.length() > 0) {
-            TextPaint labelPaint = text(bold, 11, GRAY);
-            CharSequence fit = TextUtils.ellipsize(label, labelPaint, WIDTH_DP - tx, TextUtils.TruncateAt.END);
-            c.drawText(fit, 0, fit.length(), tx, bottom + 41, labelPaint);
-        }
+        c.drawText(temp, tx, bottom + 41, tempPaint);
         return bmp;
     }
 

@@ -55,9 +55,20 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         int[] ids = ids(context, manager);
         if (ids == null || ids.length == 0) return;
 
+        for (int id : ids) {
+            manager.updateAppWidget(id, build(context, manager, id));
+        }
+        DateAlarm.schedule(context);
+        RefreshJob.ensureScheduled(context);
+    }
+
+    private static RemoteViews build(Context context, AppWidgetManager manager, int id) {
+        // 日付のブロックは、右のキャラに重ならない幅で描く。キャラは右端から約150dpまで張り出す
+        int widthDp = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+        if (widthDp <= 0) widthDp = 300;
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_news);
         views.setImageViewBitmap(R.id.date_block,
-                DateBlock.render(context, Calendar.getInstance(), Weather.kind(context),
+                DateBlock.render(context, Calendar.getInstance(), widthDp - 150, Weather.kind(context),
                         Weather.tempText(context), weatherLabel(context)));
         bindNews(context, views);
 
@@ -68,9 +79,13 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.date_block, settings);
         views.setOnClickPendingIntent(R.id.character, settings);
 
-        manager.updateAppWidget(ids, views);
-        DateAlarm.schedule(context);
-        RefreshJob.ensureScheduled(context);
+        return views;
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id,
+                                          android.os.Bundle options) {
+        manager.updateAppWidget(id, build(context, manager, id));
     }
 
     /** 気温の横に出す言葉。「晴れ・渋谷区」、取れていないときは「現在地」など（SPEC.md 仕様書2・3）。 */
@@ -98,20 +113,21 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         NewsStore.Item item = NewsStore.current(context);
         PendingIntent tap;
         if (item == null) {
-            // 一覧がまだないとき。短い文なので流れない。タップでアプリを開く
-            views.setTextViewText(R.id.news_marquee, NewsStore.tried(context)
-                    ? "ニュースを取得できませんでした" : "ニュースを読み込み中…");
+            // 一覧がまだないとき。流さない。タップでアプリを開く
+            views.removeAllViews(R.id.news_holder);
+            views.addView(R.id.news_holder, NewsBelt.still(context, NewsStore.tried(context)
+                    ? "ニュースを取得できませんでした" : "ニュースを読み込み中…"));
             tap = PendingIntent.getActivity(context, 2, new Intent(context, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         } else {
-            views.setTextViewText(R.id.news_marquee, item.line());
+            views.removeAllViews(R.id.news_holder);
+            views.addView(R.id.news_holder, NewsBelt.flowing(context, item.line()));
             Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(item.url));
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             tap = PendingIntent.getActivity(context, 1, open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         }
         views.setOnClickPendingIntent(R.id.band, tap);
-        views.setOnClickPendingIntent(R.id.news_marquee, tap);
 
         Intent shuffle = new Intent(context, NewsWidgetProvider.class);
         shuffle.setAction(ACTION_SHUFFLE);

@@ -55,23 +55,13 @@
             android:background="@drawable/chip_bg"
             android:text="@string/label_topic" />
 
-        <TextView
-            android:id="@+id/news_marquee"
+        <!-- 流れる見出し。中身は NewsBelt が入れる -->
+        <FrameLayout
+            android:id="@+id/news_holder"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginLeft="8dp"
-            android:gravity="center_vertical"
-            android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:scrollHorizontally="true"
-            android:textSize="15sp"
-            android:textColor="#141414">
-            <requestFocus />
-        </TextView>
+            android:layout_marginLeft="8dp" />
 
         <ImageView
             android:id="@+id/shuffle"
@@ -82,15 +72,15 @@
             android:src="@drawable/ic_shuffle" />
     </LinearLayout>
 
-    <!-- よこずらし。帯の左上の縁に乗り、足元が帯の上辺に少し重なる -->
+    <!-- よこずらし。帯の左上の縁に小さく乗り、足元が帯の上辺に少し重なる -->
     <ViewFlipper
         android:id="@+id/yoko_flipper"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
-        android:layout_marginLeft="12dp"
-        android:layout_marginBottom="36dp"
+        android:layout_marginLeft="14dp"
+        android:layout_marginBottom="46dp"
         android:autoStart="true"
         android:flipInterval="40">
         <ImageView
