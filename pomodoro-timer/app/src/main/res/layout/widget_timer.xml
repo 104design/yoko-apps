@@ -50,39 +50,14 @@
             android:src="@drawable/dot_off" />
     </LinearLayout>
 
-    <!-- 残り時間。動作中は Chronometer が端末側で毎秒数える（アプリから毎秒は更新できないため）。
-         止まっているときは TextView。どちらも手描き数字から作ったフォント yoko_digits で描く。
-         文字の大きさは dp 指定（端末の文字サイズ設定で崩れないように） -->
+    <!-- 残り時間。中身は状態に合わせて差し込む:
+         止まっているとき = widget_time_frame.xml を1枚
+         動作中 = widget_time_flipper.xml（この先20秒ぶんの widget_time_frame.xml を1秒ごとにめくる） -->
     <FrameLayout
-        android:id="@+id/widget_digits"
+        android:id="@+id/widget_time_slot"
         android:layout_width="wrap_content"
         android:layout_height="38dp"
-        android:layout_marginTop="4dp">
-
-        <Chronometer
-            android:id="@+id/widget_chronometer"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:fontFamily="@font/yoko_digits"
-            android:includeFontPadding="false"
-            android:textSize="38dp"
-            android:textColor="#131417"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/widget_time"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:fontFamily="@font/yoko_digits"
-            android:includeFontPadding="false"
-            android:textSize="38dp"
-            android:textColor="#131417"
-            android:text="25:00" />
-    </FrameLayout>
+        android:layout_marginTop="4dp" />
 
     <!-- 帯の線は上から77dpの位置（帯の絵の上端61dp＋線まで16dp）。
          キャラクターの絵は124dp四方で、足が上から約62%の高さにあるので、そこに乗る -->

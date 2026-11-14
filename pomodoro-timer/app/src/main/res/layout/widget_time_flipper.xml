@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 動作中の残り時間。中に「この先の1秒ごとの絵」を入れておき、ホーム画面側で1秒ごとにめくる。
+     アプリからは毎秒の更新を頼めない（5秒以上の間隔に空けられる）ので、こうして先に渡しておく。 -->
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_time_flipper"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:autoStart="true"
+    android:flipInterval="1000" />

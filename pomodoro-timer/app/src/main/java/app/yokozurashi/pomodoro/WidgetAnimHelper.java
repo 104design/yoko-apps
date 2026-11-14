@@ -10,11 +10,15 @@ import android.content.SharedPreferences;
 import android.os.Build;
 
 /**
- * Drives the widget's periodic tick while the timer runs (tape, tomatoes,
- * and the phase check). The tick asks for 1 second, but the system spaces
- * alarms at least 5 seconds apart, so it really fires about every 5 seconds.
- * That is why the countdown digits are a self-ticking Chronometer and not
- * something this tick redraws.
+ * Drives the widget's periodic tick while the timer runs: fresh countdown
+ * frames, tape, tomatoes, and the phase check.
+ *
+ * The system spaces an app's alarms at least 5 seconds apart, so the tick
+ * cannot be once a second. Instead each tick hands the widget the next 20
+ * seconds of digit frames, which the home screen flips by itself. Ticks are
+ * aimed at the instants where the remaining time is a multiple of 5 seconds,
+ * so new frames arrive exactly when a second turns over and the digits do
+ * not stutter.
  *
  * Character animation, two ways:
  *  - USE_FLIPPER = true: the widget layout holds all frames in a
@@ -31,7 +35,17 @@ public class WidgetAnimHelper {
 
     public static final String ACTION_FRAME = "app.yokozurashi.pomodoro.WIDGET_FRAME";
     private static final int REQ = 4001;
-    private static final long FRAME_MS = 1000;
+    private static final long TICK_MS = 5000;
+
+    /** Milliseconds until the next tick: the next moment (at least about
+     *  5 s away) when the remaining time is a whole multiple of 5 seconds.
+     *  The 300 ms tolerance keeps a tick that fired slightly late from
+     *  skipping a slot. */
+    static long nextTickDelay(long remainingMs) {
+        long target = ((remainingMs - TICK_MS + 300) / TICK_MS) * TICK_MS;
+        if (remainingMs - TICK_MS + 300 < 0) return TICK_MS; // about to finish anyway
+        return Math.max(1000, remainingMs - target);
+    }
 
     private static PendingIntent pendingIntent(Context ctx) {
         Intent i = new Intent(ctx, WidgetFrameReceiver.class);
@@ -62,7 +76,7 @@ public class WidgetAnimHelper {
         if (am == null) return;
         TimerState s = TimerState.load(ctx);
         if (s.running && hasWidgets(ctx)) {
-            long at = System.currentTimeMillis() + FRAME_MS;
+            long at = System.currentTimeMillis() + nextTickDelay(s.remainingNow());
             try {
                 if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
                     am.setAndAllowWhileIdle(AlarmManager.RTC, at, pendingIntent(ctx));

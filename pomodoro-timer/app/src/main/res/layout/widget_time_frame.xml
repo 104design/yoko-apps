@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ある1秒の残り時間。手描き数字の絵を並べる（100分以上のときだけ先頭の桁を出す） -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:orientation="horizontal"
+    android:gravity="center">
+    <ImageView
+        android:id="@+id/widget_d0"
+        android:layout_width="27dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        android:src="@drawable/num_0" />
+    <ImageView
+        android:id="@+id/widget_d1"
+        android:layout_width="27dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/num_0" />
+    <ImageView
+        android:id="@+id/widget_d2"
+        android:layout_width="27dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/num_0" />
+
+    <ImageView
+        android:id="@+id/widget_colon"
+        android:layout_width="12dp"
+        android:layout_height="38dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/num_colon" />
+    <ImageView
+        android:id="@+id/widget_d3"
+        android:layout_width="27dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/num_0" />
+    <ImageView
+        android:id="@+id/widget_d4"
+        android:layout_width="27dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/num_0" />
+</LinearLayout>
