@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">よこずらしニュース</string>
-    <string name="widget_desc">検証版：流れる文字と、よこずらしのアニメ</string>
-    <string name="sample_news">これは検証用の長い文です。右から左へ止まらずに流れつづけていれば成功です。タップするとブラウザが開きます ― 出典名</string>
-    <string name="slide_1">これは検証用の文です。</string>
-    <string name="slide_2">右から入って左へ出る</string>
-    <string name="slide_3">横スライドで切り替わります</string>
-    <string name="slide_4">― 出典名</string>
+    <string name="widget_desc">日付・天気・話題のニュース</string>
+    <string name="label_topic">話題</string>
+    <string name="shuffle">べつのニュースにする</string>
 </resources>

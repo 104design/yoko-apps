@@ -10,7 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/** 検証版の画面。ウィジェットをホーム画面に置く案内だけを出す。 */
+/** アプリの画面。いまはウィジェットをホーム画面に置く案内だけを出す。 */
 public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,16 +22,14 @@ public class MainActivity extends Activity {
         root.setPadding(pad, pad * 2, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("よこずらしニュース（検証版）");
+        title.setText("よこずらしニュース");
         title.setTextSize(20);
         root.addView(title);
 
         TextView body = new TextView(this);
-        body.setText("ホーム画面にウィジェットを置いて、次の3つを見てください。\n\n"
-                + "①の帯：文字が右から左へ流れつづけるか\n"
-                + "②の帯：文が横スライドで切り替わるか\n"
-                + "左上のよこずらし：コマ送りで動くか\n\n"
-                + "帯をタップするとブラウザが開きます。");
+        body.setText("ホーム画面にウィジェットを置いてください。\n\n"
+                + "日付は本物です。天気とニュースはまだ仮の表示です。\n"
+                + "ニュースの帯をタップするとブラウザが開き、右のボタンでべつのニュースに切り替わります。");
         body.setTextSize(15);
         body.setPadding(0, pad, 0, pad);
         root.addView(body);
