@@ -1,33 +1,42 @@
 #!/usr/bin/env python3
-"""Generate widget animation frames from the character art.
+"""ウィジェット用のキャラクター画像を、アプリ用の手描きコマから作る。
 
-Reads character_focus.png / character_break.png (drawable-nodpi) and writes
-widget_char_<mode>_<pose>.png frames: still / wide (squashed) / tall (stretched),
-bottom-aligned on a fixed canvas so flipping frames looks like squash-and-stretch.
-Re-run after replacing the character art.
+drawable-nodpi の 1000x1000 のコマを 500x500 に縮めて書き出すだけ。
+絵の変形はしない。手描きコマを差し替えたら、これを実行し直す。
+
+  focus_1..7        -> widget_frame_focus_1..7   （集中・動作中のコマ送り）
+  break_1..5        -> widget_frame_break_1..5   （休憩・動作中のコマ送り）
+  focus_pause_1     -> widget_pause_focus        （フェーズ途中で停止）
+  break_pause_1     -> widget_pause_break
+  focus_wait_1      -> widget_wait_focus         （開始前・次フェーズ待ち・セット完了後）
+  break_wait_1      -> widget_wait_break
 """
-from PIL import Image
 import os
 
-RES = os.path.join(os.path.dirname(__file__), "app/src/main/res/drawable-nodpi")
-CANVAS = 460
-BASE = 0.90  # character size relative to canvas in the "still" pose
-POSES = {"still": (1.00, 1.00), "wide": (1.16, 0.87), "tall": (0.90, 1.09)}
+from PIL import Image
+
+RES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app/src/main/res/drawable-nodpi")
+SIZE = 500
+
+JOBS = (
+    [(f"focus_{i}", f"widget_frame_focus_{i}") for i in range(1, 8)]
+    + [(f"break_{i}", f"widget_frame_break_{i}") for i in range(1, 6)]
+    + [
+        ("focus_pause_1", "widget_pause_focus"),
+        ("break_pause_1", "widget_pause_break"),
+        ("focus_wait_1", "widget_wait_focus"),
+        ("break_wait_1", "widget_wait_break"),
+    ]
+)
 
 
-def make(mode: str) -> None:
-    src = Image.open(os.path.join(RES, f"character_{mode}.png")).convert("RGBA")
-    for pose, (fx, fy) in POSES.items():
-        w = int(CANVAS * BASE * fx)
-        h = int(CANVAS * BASE * fy)
-        img = src.resize((w, h))
-        canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-        canvas.alpha_composite(img, ((CANVAS - w) // 2, CANVAS - h))
-        out = os.path.join(RES, f"widget_char_{mode}_{pose}.png")
-        canvas.save(out)
-        print("wrote", out)
+def main() -> None:
+    for src, dst in JOBS:
+        im = Image.open(os.path.join(RES, src + ".png")).convert("RGBA")
+        im = im.resize((SIZE, SIZE), Image.LANCZOS)
+        im.save(os.path.join(RES, dst + ".png"), optimize=True)
+        print("wrote", dst + ".png")
 
 
 if __name__ == "__main__":
-    make("focus")
-    make("break")
+    main()

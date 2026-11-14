@@ -15,8 +15,16 @@ public class WidgetFrameReceiver extends BroadcastReceiver {
         // Even if the finish alarm is delayed by battery saving, the phase
         // still advances here (checked every frame tick) instead of the
         // widget chronometer running into negative time.
-        PhaseAdvancer.advanceIfFinished(context);
+        String changed = PhaseAdvancer.advanceIfFinished(context);
         WidgetAnimHelper.flipFrame(context);
-        TimerWidgetProvider.updateAll(context); // updateAll re-syncs the next frame
+        if (changed != null || !WidgetAnimHelper.USE_FLIPPER) {
+            // phase changed (character may differ), or the 1-per-second
+            // flip-book is in use: rebuild everything
+            TimerWidgetProvider.updateAll(context);
+        } else {
+            // only digits and tape move; the character keeps animating
+            TimerWidgetProvider.updateTick(context);
+        }
+        // both paths re-arm the next tick
     }
 }

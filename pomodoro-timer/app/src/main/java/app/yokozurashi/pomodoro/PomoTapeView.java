@@ -39,9 +39,9 @@ public class PomoTapeView extends View {
     public PomoTapeView(Context ctx) {
         super(ctx);
         density = ctx.getResources().getDisplayMetrics().density;
-        tickPaint.setColor(Color.rgb(120, 120, 120));
-        tickPaint.setStrokeWidth(dp(1.2f));
-        linePaint.setStrokeWidth(dp(2.2f));
+        tickPaint.setStrokeCap(Paint.Cap.ROUND);
+        linePaint.setStrokeWidth(dp(3));
+        linePaint.setStrokeCap(Paint.Cap.ROUND);
         markerPaint.setStyle(Paint.Style.FILL);
         tomatoOn = BitmapFactory.decodeResource(getResources(), R.drawable.dot_on);
         tomatoOff = BitmapFactory.decodeResource(getResources(), R.drawable.dot_off);
@@ -127,7 +127,7 @@ public class PomoTapeView extends View {
             float x1 = cx + (start - elapsedMin) * px;
             float x2 = cx + (end - elapsedMin) * px;
             if (x2 < 0 || x1 > w) continue;
-            linePaint.setColor(Color.rgb(60, 60, 60));
+            linePaint.setColor(TapeView.INK);
             if (!segBreak[s]) {
                 canvas.drawLine(Math.max(0, x1), baseY, Math.min(w, x2), baseY, linePaint);
             } else {
@@ -148,11 +148,12 @@ public class PomoTapeView extends View {
             boolean bound = false;
             for (float e : segEnds) if (Math.abs(e - m) < 0.001f) bound = true;
             boolean major = m % 5 == 0;
-            float tickH = bound ? dp(15) : major ? dp(12) : dp(7);
-            float saved = tickPaint.getStrokeWidth();
-            if (bound) tickPaint.setStrokeWidth(dp(3));
+            // same weights as the prototype: thin gray minutes, dark
+            // 5-minute ticks, thick segment bounds
+            float tickH = bound ? dp(14) : major ? dp(13) : dp(7);
+            tickPaint.setColor((bound || major) ? TapeView.INK : TapeView.MUTE);
+            tickPaint.setStrokeWidth(bound ? dp(4) : major ? dp(2.5f) : dp(1.5f));
             canvas.drawLine(x, baseY, x, baseY + tickH, tickPaint);
-            tickPaint.setStrokeWidth(saved);
         }
 
         // tomatoes sitting on the line at each focus end

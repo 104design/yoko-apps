@@ -67,7 +67,13 @@ public class TimerState {
 
     public void start() {
         timerAlertPending = false;
-        if (done) { done = false; remainingMs = totalMs(); }
+        if (done) {
+            // starting again after a finished set begins a NEW set: the red
+            // tomatoes stay until this moment, then go back to green
+            if ("pomodoro".equals(kind) && "focus".equals(mode) && cycles >= 4) cycles = 0;
+            done = false;
+            remainingMs = totalMs();
+        }
         if (remainingMs <= 0) remainingMs = totalMs();
         running = true;
         endAtMs = System.currentTimeMillis() + remainingMs;
@@ -160,6 +166,26 @@ public class TimerState {
             endAtMs = 0;
         }
         return msg;
+    }
+
+    /** Elapsed minutes within the current pomodoro set (or within the long
+     *  break): the position of the pomodoro tape. Shared by app and widget. */
+    public float pomodoroElapsedMin() {
+        if ("long".equals(mode)) {
+            return (totalMs() - remainingNow()) / 60000f;
+        }
+        long focus = pomodoroDurationMs("focus");
+        long brk = pomodoroDurationMs("short");
+        if (done) return (4 * (focus + brk)) / 60000f;
+        // cycles counts completed focus phases; in a break it already
+        // includes the focus that just ended
+        int phaseIndex = "focus".equals(mode) ? cycles * 2 : cycles * 2 - 1;
+        float elapsed = 0;
+        for (int i = 0; i < phaseIndex; i++) {
+            elapsed += (i % 2 == 0 ? focus : brk) / 60000f;
+        }
+        elapsed += (totalMs() - remainingNow()) / 60000f;
+        return elapsed;
     }
 
     public static String format(long ms) {

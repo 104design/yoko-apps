@@ -35,7 +35,10 @@ public class TapeView extends View {
     private final Paint tickPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint fainterPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Bitmap[] digits = new Bitmap[10];
+    static final int INK = Color.rgb(19, 20, 23);
+    static final int MUTE = Color.rgb(141, 146, 160);
 
     private float offsetMin = 0f; // minutes at the center marker (float while flowing/dragging)
     private float virtualMin = 0f; // unbounded drag position; offsetMin is its rubber-banded form
@@ -54,10 +57,11 @@ public class TapeView extends View {
         super(ctx);
         density = ctx.getResources().getDisplayMetrics().density;
         scroller = new OverScroller(ctx);
-        tickPaint.setColor(Color.rgb(120, 120, 120));
-        tickPaint.setStrokeWidth(dp(1.2f));
-        linePaint.setColor(Color.rgb(60, 60, 60));
-        linePaint.setStrokeWidth(dp(1.6f));
+        tickPaint.setStrokeCap(Paint.Cap.ROUND);
+        linePaint.setColor(INK);
+        linePaint.setStrokeWidth(dp(3));
+        linePaint.setStrokeCap(Paint.Cap.ROUND);
+        fainterPaint.setAlpha(120);
         markerPaint.setColor(Color.parseColor("#5B8DEF"));
         markerPaint.setStyle(Paint.Style.FILL);
         int[] ids = {R.drawable.num_0, R.drawable.num_1, R.drawable.num_2, R.drawable.num_3,
@@ -117,8 +121,10 @@ public class TapeView extends View {
         float baseY = dp(10);           // the tape line sits at yokozurashi's feet
         float pxPerMin = minutePx();
 
-        // tape line
-        canvas.drawLine(0, baseY, w, baseY, linePaint);
+        // tape line: starts at 0 (nothing to the left of it) and ends at 999
+        float lineL = Math.max(-dp(4), cx + (0 - offsetMin) * pxPerMin);
+        float lineR = Math.min(w + dp(4), cx + (MAX_MIN - offsetMin) * pxPerMin);
+        if (lineR > lineL) canvas.drawLine(lineL, baseY, lineR, baseY, linePaint);
 
         int startMin = Math.max(0, (int) Math.floor(offsetMin - cx / pxPerMin) - 1);
         int endMin = Math.min(MAX_MIN, (int) Math.ceil(offsetMin + (w - cx) / pxPerMin) + 1);
@@ -126,18 +132,19 @@ public class TapeView extends View {
             float x = cx + (m - offsetMin) * pxPerMin;
             boolean major = m % 5 == 0;
             boolean preset = isPreset(m);
-            float tickH = preset ? dp(15) : major ? dp(12) : dp(7);
-            float savedWidth = tickPaint.getStrokeWidth();
-            if (m == 0) tickPaint.setStrokeWidth(dp(3)); // 0 is a thick tick
+            // minute ticks are thin and gray; 5-minute and preset ticks are
+            // dark; 0 is a thick wall (same weights as the prototype)
+            float tickH = m == 0 ? dp(20) : (major || preset) ? dp(13) : dp(7);
+            tickPaint.setColor((major || preset) ? INK : MUTE);
+            tickPaint.setStrokeWidth(m == 0 ? dp(5) : (major || preset) ? dp(2.5f) : dp(1.5f));
             canvas.drawLine(x, baseY, x, baseY + tickH, tickPaint);
-            tickPaint.setStrokeWidth(savedWidth);
             if (major || preset) {
                 float numH = preset ? dp(21) : dp(15);
-                drawNumber(canvas, m, x, baseY + dp(17), numH);
-                if (preset) {
-                    // pseudo-bold: draw again with a slight offset (presets are markers)
-                    drawNumber(canvas, m, x + dp(0.7f), baseY + dp(17), numH);
-                }
+                float numTop = baseY + (m == 0 ? dp(23) : dp(17));
+                // presets are the markers: full black and pseudo-bold.
+                // other numbers are drawn fainter
+                drawNumber(canvas, m, x, numTop, numH, preset ? null : fainterPaint);
+                if (preset) drawNumber(canvas, m, x + dp(0.7f), numTop, numH, null);
             }
         }
 
@@ -178,7 +185,7 @@ public class TapeView extends View {
     }
 
     /** Draw a non-negative integer centered at x, top at y, with the given height. */
-    private void drawNumber(Canvas canvas, int value, float cx, float top, float height) {
+    private void drawNumber(Canvas canvas, int value, float cx, float top, float height, Paint paint) {
         String s = String.valueOf(value);
         float digitW = height * (300f / 420f);
         float totalW = digitW * s.length();
@@ -188,7 +195,7 @@ public class TapeView extends View {
             if (b != null) {
                 android.graphics.RectF dst = new android.graphics.RectF(
                         x + i * digitW, top, x + (i + 1) * digitW, top + height);
-                canvas.drawBitmap(b, null, dst, null);
+                canvas.drawBitmap(b, null, dst, paint);
             }
         }
     }

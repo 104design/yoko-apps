@@ -1,51 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ウィジェット本体。上から: トマト4つ / 手描き数字 / キャラクターと足元の帯 / ▶・⏸。
+     キャラクターは widget_char_slot に、状態に合った部品（widget_char_*.xml）を差し込む。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="12dp"
+    android:padding="8dp"
     android:background="@drawable/widget_bg">
 
-    <TextView
-        android:id="@+id/widget_title"
+    <LinearLayout
+        android:id="@+id/widget_toms"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="13sp"
-        android:textColor="#666666"
-        android:text="🍅 集中" />
+        android:layout_height="16dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+        <ImageView
+            android:id="@+id/widget_tom_1"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/dot_off" />
+        <ImageView
+            android:id="@+id/widget_tom_2"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/dot_off" />
+        <ImageView
+            android:id="@+id/widget_tom_3"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/dot_off" />
+        <ImageView
+            android:id="@+id/widget_tom_4"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/dot_off" />
+    </LinearLayout>
 
-    <Chronometer
-        android:id="@+id/widget_chronometer"
+    <LinearLayout
+        android:id="@+id/widget_digits"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="34sp"
-        android:textStyle="bold"
-        android:textColor="#222222"
-        android:visibility="gone" />
+        android:layout_height="38dp"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+        <ImageView
+            android:id="@+id/widget_d0"
+            android:layout_width="27dp"
+            android:layout_height="38dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            android:src="@drawable/num_0" />
+        <ImageView
+            android:id="@+id/widget_d1"
+            android:layout_width="27dp"
+            android:layout_height="38dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/num_0" />
+        <ImageView
+            android:id="@+id/widget_d2"
+            android:layout_width="27dp"
+            android:layout_height="38dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/num_0" />
 
-    <TextView
-        android:id="@+id/widget_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="34sp"
-        android:textStyle="bold"
-        android:textColor="#222222"
-        android:text="25:00" />
+        <ImageView
+            android:id="@+id/widget_colon"
+            android:layout_width="12dp"
+            android:layout_height="38dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/num_colon" />
+        <ImageView
+            android:id="@+id/widget_d3"
+            android:layout_width="27dp"
+            android:layout_height="38dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/num_0" />
+        <ImageView
+            android:id="@+id/widget_d4"
+            android:layout_width="27dp"
+            android:layout_height="38dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/num_0" />
+    </LinearLayout>
 
-    <ImageView
-        android:id="@+id/widget_char"
-        android:layout_width="120dp"
-        android:layout_height="90dp"
-        android:scaleType="fitCenter"
-        android:src="@drawable/widget_char_focus_still" />
+    <!-- 帯の線は上から77dpの位置（帯の絵の上端61dp＋線まで16dp）。
+         キャラクターの絵は124dp四方で、足が上から約62%の高さにあるので、そこに乗る -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="96dp">
 
-    <Button
+        <ImageView
+            android:id="@+id/widget_tape"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:layout_gravity="top"
+            android:layout_marginTop="61dp"
+            android:scaleType="center" />
+
+        <FrameLayout
+            android:id="@+id/widget_char_slot"
+            android:layout_width="124dp"
+            android:layout_height="124dp"
+            android:layout_gravity="top|center_horizontal" />
+    </FrameLayout>
+
+    <!-- スタートと一時停止。絵より広い範囲が反応する。ここ以外をタップするとアプリが開く -->
+    <FrameLayout
         android:id="@+id/widget_toggle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="13sp"
-        android:textAllCaps="false"
-        android:text="▶ スタート" />
+        android:layout_width="match_parent"
+        android:layout_height="38dp">
+
+        <ImageView
+            android:id="@+id/widget_toggle_icon"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_play" />
+    </FrameLayout>
 </LinearLayout>
