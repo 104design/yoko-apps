@@ -25,15 +25,10 @@ import android.widget.RemoteViews;
 public class TimerWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_TOGGLE = "app.yokozurashi.pomodoro.WIDGET_TOGGLE";
 
-    /** Digits are faded to about 30% while stopped. The 4 and 5 stay filled
-     *  (they are the "yoko" mark), so fill is never used to show state. */
-    private static final int ALPHA_RUNNING = 255;
-    private static final int ALPHA_STOPPED = 77;
-
-    private static final int[] DIGIT_RES = {
-            R.drawable.num_0, R.drawable.num_1, R.drawable.num_2, R.drawable.num_3,
-            R.drawable.num_4, R.drawable.num_5, R.drawable.num_6, R.drawable.num_7,
-            R.drawable.num_8, R.drawable.num_9};
+    /** Digits are faded to about 30% while stopped (same ink color, 30% alpha).
+     *  The 4 and 5 stay filled (they are the "yoko" mark), so fill is never
+     *  used to show state. */
+    private static final int DIGIT_COLOR_STOPPED = 0x4D131417;
     private static final int[] TOMATO_IDS = {
             R.id.widget_tom_1, R.id.widget_tom_2, R.id.widget_tom_3, R.id.widget_tom_4};
     // fallback flip-book (1 frame per second) when the auto-flipping layout is off
@@ -88,7 +83,8 @@ public class TimerWidgetProvider extends AppWidgetProvider {
         WidgetAnimHelper.sync(context);
     }
 
-    /** Once-a-second update while running: only digits, tomatoes and tape.
+    /** Periodic update while running (every few seconds): countdown base,
+     *  tomatoes and tape.
      *  The character part is left alone so its own frame animation keeps
      *  playing without a restart. */
     public static void updateTick(Context context) {
@@ -114,20 +110,32 @@ public class TimerWidgetProvider extends AppWidgetProvider {
                     pomo && i < s.cycles ? R.drawable.dot_on : R.drawable.dot_off);
         }
 
-        // digits: mm:ss (mmm:ss past 99 minutes), hand-drawn art
+        // digits. An app cannot update a widget every second (the system
+        // spaces alarms at least 5 seconds apart), so while running the
+        // countdown is a Chronometer that the home screen ticks by itself.
+        // It draws with a font traced from the hand-drawn digits
+        // (res/font/yoko_digits.ttf, made by make_digit_font.py).
         long totalSec = s.done ? 0 : (long) Math.ceil(s.remainingNow() / 1000.0);
-        int min = (int) Math.min(999, totalSec / 60);
-        int sec = (int) (totalSec % 60);
-        views.setViewVisibility(R.id.widget_d0, min >= 100 ? View.VISIBLE : View.GONE);
-        views.setImageViewResource(R.id.widget_d0, DIGIT_RES[(min / 100) % 10]);
-        views.setImageViewResource(R.id.widget_d1, DIGIT_RES[(min / 10) % 10]);
-        views.setImageViewResource(R.id.widget_d2, DIGIT_RES[min % 10]);
-        views.setImageViewResource(R.id.widget_d3, DIGIT_RES[sec / 10]);
-        views.setImageViewResource(R.id.widget_d4, DIGIT_RES[sec % 10]);
-        int alpha = s.running ? ALPHA_RUNNING : ALPHA_STOPPED;
-        for (int id : new int[]{R.id.widget_d0, R.id.widget_d1, R.id.widget_d2,
-                R.id.widget_colon, R.id.widget_d3, R.id.widget_d4}) {
-            views.setInt(id, "setImageAlpha", alpha);
+        // from one hour up the Chronometer shows h:mm:ss; shrink so it fits
+        float sizeDp = totalSec >= 3600 ? 28f : 38f;
+        if (s.running) {
+            views.setViewVisibility(R.id.widget_time, View.GONE);
+            views.setViewVisibility(R.id.widget_chronometer, View.VISIBLE);
+            views.setTextViewTextSize(R.id.widget_chronometer,
+                    android.util.TypedValue.COMPLEX_UNIT_DIP, sizeDp);
+            long base = android.os.SystemClock.elapsedRealtime() + s.remainingNow();
+            views.setChronometerCountDown(R.id.widget_chronometer, true);
+            views.setChronometer(R.id.widget_chronometer, base, null, true);
+        } else {
+            views.setChronometer(R.id.widget_chronometer, 0, null, false);
+            views.setViewVisibility(R.id.widget_chronometer, View.GONE);
+            views.setViewVisibility(R.id.widget_time, View.VISIBLE);
+            views.setTextViewTextSize(R.id.widget_time,
+                    android.util.TypedValue.COMPLEX_UNIT_DIP, sizeDp);
+            // same text format as the Chronometer, so nothing jumps on start/stop
+            views.setTextViewText(R.id.widget_time,
+                    android.text.format.DateUtils.formatElapsedTime(totalSec));
+            views.setTextColor(R.id.widget_time, DIGIT_COLOR_STOPPED);
         }
 
         views.setImageViewBitmap(R.id.widget_tape, WidgetTape.render(context, s));

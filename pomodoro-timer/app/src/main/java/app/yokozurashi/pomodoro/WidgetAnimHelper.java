@@ -10,15 +10,18 @@ import android.content.SharedPreferences;
 import android.os.Build;
 
 /**
- * Drives the widget's once-a-second tick while the timer runs (digits,
- * tape, and the phase check).
+ * Drives the widget's periodic tick while the timer runs (tape, tomatoes,
+ * and the phase check). The tick asks for 1 second, but the system spaces
+ * alarms at least 5 seconds apart, so it really fires about every 5 seconds.
+ * That is why the countdown digits are a self-ticking Chronometer and not
+ * something this tick redraws.
  *
  * Character animation, two ways:
  *  - USE_FLIPPER = true: the widget layout holds all frames in a
  *    ViewFlipper that the home screen flips by itself at the app's own
  *    speed. The tick then only touches digits and tape.
  *  - USE_FLIPPER = false: the old way. Each tick swaps one still frame
- *    (3 frames, 1 per second).
+ *    (3 frames, one per tick).
  * The flipper was agreed as a trial (2026-11-13): if it stutters, runs at
  * the wrong speed, or drains the battery on the real device, set this to
  * false and rebuild. Nothing else needs to change.
