@@ -846,25 +846,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Elapsed minutes within the current set (or within the long break). */
     private float pomodoroElapsedMin() {
-        if ("long".equals(state.mode)) {
-            return (state.totalMs() - state.remainingNow()) / 60000f;
-        }
-        long focus = TimerState.pomodoroDurationMs("focus");
-        long brk = TimerState.pomodoroDurationMs("short");
-        float elapsed = 0;
-        String m = state.mode;
-        if (state.done) return (4 * (focus + brk)) / 60000f;
-        int phaseIndex;
-        if ("focus".equals(m)) phaseIndex = state.cycles * 2;
-        else phaseIndex = state.cycles * 2 - 1; // short break after focus #(cycles)
-        // cycles counts completed focus phases; in a break, cycles already includes it
-        for (int i = 0; i < phaseIndex; i++) {
-            elapsed += (i % 2 == 0 ? focus : brk) / 60000f;
-        }
-        elapsed += (state.totalMs() - state.remainingNow()) / 60000f;
-        return elapsed;
+        return state.pomodoroElapsedMin();
     }
 
     private void showGuide(String text, long millis) {
