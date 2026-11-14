@@ -88,11 +88,16 @@ public class NewsWidgetProvider extends AppWidgetProvider {
             views.setViewLayoutHeight(R.id.date_block,
                     DateBlock.HEIGHT_DP * layout.dateScale, TypedValue.COMPLEX_UNIT_DIP);
         }
-        float dateWidth = canResize ? layout.dateWidth : 160;
+        DateBlock.WeatherLine line = new DateBlock.WeatherLine();
+        line.kind = Weather.kind(context);
+        line.temp = Weather.tempText(context);
+        line.high = Weather.highText(context);
+        line.low = Weather.lowText(context);
+        line.rain = Weather.rainText(context);
+        line.place = layout.showPlace ? placeLabel(context) : null;
         views.setImageViewBitmap(R.id.date_block,
-                DateBlock.render(context, Calendar.getInstance(), layout.dateScale, dateWidth,
-                        Math.min(dateWidth, layout.labelRight), Weather.kind(context),
-                        Weather.tempText(context), weatherLabel(context)));
+                DateBlock.render(context, Calendar.getInstance(), layout.dateScale,
+                        canResize ? layout.dateWidth : 160, line));
         bindNews(context, views);
 
         Intent app = new Intent(context, MainActivity.class);
@@ -111,15 +116,13 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         manager.updateAppWidget(id, build(context, manager, id));
     }
 
-    /** 気温の横に出す言葉。「晴れ・渋谷区」、取れていないときは「現在地」など（SPEC.md 仕様書2・3）。 */
-    private static String weatherLabel(Context context) {
+    /** 地名の行に出す言葉。地名が分からなければ「現在地」、許可がなければ「位置情報を許可」。 */
+    private static String placeLabel(Context context) {
         if (!LocationHelper.hasPermission(context) && !LocationHelper.hasLocation(context)) {
             return "位置情報を許可";
         }
         String place = LocationHelper.place(context);
-        if (place == null) place = "現在地";
-        String word = Weather.word(context);
-        return word == null ? place : word + "・" + place;
+        return place == null ? "現在地" : place;
     }
 
     /** ニュースの帯だけを差し替える。よこずらしのアニメや日付は触らない。 */

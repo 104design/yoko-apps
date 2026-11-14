@@ -27,6 +27,7 @@ public class DateBlock {
     private static final int INK = 0xFF141414;
     private static final int MAGENTA = 0xFFC8387A;
     private static final int GRAY = 0xFF5A5A5A;
+    private static final int TEAL_DARK = 0xFF1A7F7A;
 
     private static final int[] DIGITS = {
             R.drawable.num_0, R.drawable.num_1, R.drawable.num_2, R.drawable.num_3,
@@ -39,23 +40,28 @@ public class DateBlock {
     private static final float DIGIT_H = 32;
     private static final float DIGIT_GAP = 3;
 
+    /** 天気の行に出す内容。取れていない項目は null。 */
+    public static class WeatherLine {
+        public int kind = Weather.NONE; // アイコンの種類
+        public String temp = "--°";     // いまの気温
+        public String high;             // 最高気温（例「22°」）
+        public String low;              // 最低気温
+        public String rain;             // 降水確率（例「30%」）
+        public String place;            // 地名、または「現在地」「位置情報を許可」。出さないなら null
+    }
+
     /**
-     * @param scale        拡大率。大きいウィジェットでは日付を大きく描く
-     * @param widthDp      画像の幅（実寸のdp）
-     * @param labelRightDp 天気・地名の文字を収める右端（実寸のdp）。右のキャラの髪に重ならない位置
-     * @param kind  天気アイコンの種類（Weather.SUN など）。Weather.NONE ならアイコンなし
-     * @param temp  気温の表示（例「18°」）。取れていないときは「--°」
-     * @param label 天気と地名（例「晴れ・渋谷区」）。なければ null
+     * @param scale   拡大率。大きいウィジェットでは日付を大きく描く
+     * @param widthDp 画像の幅（実寸のdp）
      */
-    public static Bitmap render(Context ctx, Calendar now, float scale, float widthDp, float labelRightDp,
-                                int kind, String temp, String label) {
+    public static Bitmap render(Context ctx, Calendar now, float scale, float widthDp, WeatherLine w) {
         Resources res = ctx.getResources();
         float d = res.getDisplayMetrics().density;
         Bitmap bmp = Bitmap.createBitmap(Math.max(1, Math.round(widthDp * d)),
                 Math.round(HEIGHT_DP * scale * d), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
         c.scale(d * scale, d * scale); // 以降は「拡大率1のときの dp」で描く
-        float labelRight = labelRightDp / scale;
+        float right = widthDp / scale;
 
         Typeface black = res.getFont(R.font.zen_maru_black);
         Typeface bold = res.getFont(R.font.zen_maru_bold);
@@ -71,28 +77,42 @@ public class DateBlock {
         x = drawNumber(c, res, img, now.get(Calendar.DAY_OF_MONTH), x);
         c.drawText("日", x, bottom - 2, unit);
 
-        // 2行目：曜日と、天気・地名
-        TextPaint week = text(bold, 13, MAGENTA);
-        String weekday = WEEKDAYS[now.get(Calendar.DAY_OF_WEEK) - 1];
-        c.drawText(weekday, 0, bottom + 16, week);
-        if (label != null && label.length() > 0) {
-            float lx = week.measureText(weekday) + 8;
-            TextPaint labelPaint = text(bold, 11, GRAY);
-            CharSequence fit = TextUtils.ellipsize(label, labelPaint, Math.max(0, labelRight - lx), TextUtils.TruncateAt.END);
-            c.drawText(fit, 0, fit.length(), lx, bottom + 15.5f, labelPaint);
-        }
+        // 2行目：曜日
+        c.drawText(WEEKDAYS[now.get(Calendar.DAY_OF_WEEK) - 1], 0, bottom + 16, text(bold, 13, MAGENTA));
 
-        // 3行目：天気アイコンと気温
+        // 3行目：天気アイコン、いまの気温、その右に「最高/最低」と降水確率を2段で
         TextPaint tempPaint = text(black, 22, INK);
         float tx = 0;
-        if (kind != Weather.NONE) {
+        if (w.kind != Weather.NONE) {
             c.save();
             c.translate(0, bottom + 21);
-            drawIcon(c, kind);
+            drawIcon(c, w.kind);
             c.restore();
             tx = 24 + 6;
         }
-        c.drawText(temp, tx, bottom + 41, tempPaint);
+        c.drawText(w.temp, tx, bottom + 41, tempPaint);
+        tx += tempPaint.measureText(w.temp) + 8;
+        TextPaint small = text(bold, 10.5f, GRAY);
+        if (w.high != null && w.low != null) {
+            TextPaint hi = text(bold, 10.5f, MAGENTA);
+            TextPaint lo = text(bold, 10.5f, TEAL_DARK);
+            float sx = tx;
+            c.drawText(w.high, sx, bottom + 30, hi);
+            sx += hi.measureText(w.high);
+            c.drawText("/", sx + 1.5f, bottom + 30, small);
+            sx += small.measureText("/") + 3;
+            c.drawText(w.low, sx, bottom + 30, lo);
+        }
+        if (w.rain != null) {
+            c.drawText("降水" + w.rain, tx, bottom + 42, small);
+        }
+
+        // 4行目：地名
+        if (w.place != null && w.place.length() > 0) {
+            TextPaint placePaint = text(bold, 11, GRAY);
+            CharSequence fit = TextUtils.ellipsize(w.place, placePaint, Math.max(0, right), TextUtils.TruncateAt.END);
+            c.drawText(fit, 0, fit.length(), 0, bottom + 58, placePaint);
+        }
         return bmp;
     }
 
