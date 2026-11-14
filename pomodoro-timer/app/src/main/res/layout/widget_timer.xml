@@ -50,52 +50,14 @@
             android:src="@drawable/dot_off" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/widget_digits"
+    <!-- 残り時間。中身は状態に合わせて差し込む:
+         止まっているとき = widget_time_frame.xml を1枚
+         動作中 = widget_time_flipper.xml（この先20秒ぶんの widget_time_frame.xml を1秒ごとにめくる） -->
+    <FrameLayout
+        android:id="@+id/widget_time_slot"
         android:layout_width="wrap_content"
         android:layout_height="38dp"
-        android:layout_marginTop="4dp"
-        android:orientation="horizontal"
-        android:gravity="center">
-        <ImageView
-            android:id="@+id/widget_d0"
-            android:layout_width="27dp"
-            android:layout_height="38dp"
-            android:scaleType="fitCenter"
-            android:visibility="gone"
-            android:src="@drawable/num_0" />
-        <ImageView
-            android:id="@+id/widget_d1"
-            android:layout_width="27dp"
-            android:layout_height="38dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/num_0" />
-        <ImageView
-            android:id="@+id/widget_d2"
-            android:layout_width="27dp"
-            android:layout_height="38dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/num_0" />
-
-        <ImageView
-            android:id="@+id/widget_colon"
-            android:layout_width="12dp"
-            android:layout_height="38dp"
-            android:scaleType="centerCrop"
-            android:src="@drawable/num_colon" />
-        <ImageView
-            android:id="@+id/widget_d3"
-            android:layout_width="27dp"
-            android:layout_height="38dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/num_0" />
-        <ImageView
-            android:id="@+id/widget_d4"
-            android:layout_width="27dp"
-            android:layout_height="38dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/num_0" />
-    </LinearLayout>
+        android:layout_marginTop="4dp" />
 
     <!-- 帯の線は上から77dpの位置（帯の絵の上端61dp＋線まで16dp）。
          キャラクターの絵は124dp四方で、足が上から約62%の高さにあるので、そこに乗る -->

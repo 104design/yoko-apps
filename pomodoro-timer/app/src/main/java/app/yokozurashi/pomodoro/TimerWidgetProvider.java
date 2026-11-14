@@ -25,10 +25,15 @@ import android.widget.RemoteViews;
 public class TimerWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_TOGGLE = "app.yokozurashi.pomodoro.WIDGET_TOGGLE";
 
-    /** Digits are faded to about 30% while stopped. The 4 and 5 stay filled
-     *  (they are the "yoko" mark), so fill is never used to show state. */
+    /** Digits are faded to about 30% while stopped.
+     *  The 4 and 5 stay filled (they are the "yoko" mark), so fill is never
+     *  used to show state. */
     private static final int ALPHA_RUNNING = 255;
     private static final int ALPHA_STOPPED = 77;
+    /** How many seconds of countdown frames are handed over at once. The
+     *  tick refreshes them about every 5 seconds; the rest is slack for a
+     *  late tick. Past the last frame the flipper would loop back. */
+    private static final int TIME_FRAMES = 20;
 
     private static final int[] DIGIT_RES = {
             R.drawable.num_0, R.drawable.num_1, R.drawable.num_2, R.drawable.num_3,
@@ -88,7 +93,8 @@ public class TimerWidgetProvider extends AppWidgetProvider {
         WidgetAnimHelper.sync(context);
     }
 
-    /** Once-a-second update while running: only digits, tomatoes and tape.
+    /** Periodic update while running (about every 5 seconds): the next
+     *  countdown frames, tomatoes and tape.
      *  The character part is left alone so its own frame animation keeps
      *  playing without a restart. */
     public static void updateTick(Context context) {
@@ -114,20 +120,23 @@ public class TimerWidgetProvider extends AppWidgetProvider {
                     pomo && i < s.cycles ? R.drawable.dot_on : R.drawable.dot_off);
         }
 
-        // digits: mm:ss (mmm:ss past 99 minutes), hand-drawn art
+        // digits: hand-drawn digit art. An app cannot update a widget every
+        // second (the system spaces its alarms at least 5 seconds apart), so
+        // while running we hand over the next TIME_FRAMES seconds as frames
+        // and the home screen flips them once a second by itself. Every tick
+        // (about 5 s, see WidgetAnimHelper) replaces them with fresh ones.
         long totalSec = s.done ? 0 : (long) Math.ceil(s.remainingNow() / 1000.0);
-        int min = (int) Math.min(999, totalSec / 60);
-        int sec = (int) (totalSec % 60);
-        views.setViewVisibility(R.id.widget_d0, min >= 100 ? View.VISIBLE : View.GONE);
-        views.setImageViewResource(R.id.widget_d0, DIGIT_RES[(min / 100) % 10]);
-        views.setImageViewResource(R.id.widget_d1, DIGIT_RES[(min / 10) % 10]);
-        views.setImageViewResource(R.id.widget_d2, DIGIT_RES[min % 10]);
-        views.setImageViewResource(R.id.widget_d3, DIGIT_RES[sec / 10]);
-        views.setImageViewResource(R.id.widget_d4, DIGIT_RES[sec % 10]);
-        int alpha = s.running ? ALPHA_RUNNING : ALPHA_STOPPED;
-        for (int id : new int[]{R.id.widget_d0, R.id.widget_d1, R.id.widget_d2,
-                R.id.widget_colon, R.id.widget_d3, R.id.widget_d4}) {
-            views.setInt(id, "setImageAlpha", alpha);
+        String pkg = context.getPackageName();
+        views.removeAllViews(R.id.widget_time_slot);
+        if (s.running) {
+            RemoteViews flipper = new RemoteViews(pkg, R.layout.widget_time_flipper);
+            for (int k = 0; k < TIME_FRAMES; k++) {
+                flipper.addView(R.id.widget_time_flipper,
+                        timeFrame(pkg, Math.max(0, totalSec - k), ALPHA_RUNNING));
+            }
+            views.addView(R.id.widget_time_slot, flipper);
+        } else {
+            views.addView(R.id.widget_time_slot, timeFrame(pkg, totalSec, ALPHA_STOPPED));
         }
 
         views.setImageViewBitmap(R.id.widget_tape, WidgetTape.render(context, s));
@@ -161,6 +170,26 @@ public class TimerWidgetProvider extends AppWidgetProvider {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         }
         return views;
+    }
+
+    /** One still picture of a remaining time: mm:ss (mmm:ss from 100 minutes). */
+    private static RemoteViews timeFrame(String pkg, long totalSec, int alpha) {
+        RemoteViews f = new RemoteViews(pkg, R.layout.widget_time_frame);
+        int min = (int) Math.min(999, totalSec / 60);
+        int sec = (int) (totalSec % 60);
+        f.setViewVisibility(R.id.widget_d0, min >= 100 ? View.VISIBLE : View.GONE);
+        f.setImageViewResource(R.id.widget_d0, DIGIT_RES[(min / 100) % 10]);
+        f.setImageViewResource(R.id.widget_d1, DIGIT_RES[(min / 10) % 10]);
+        f.setImageViewResource(R.id.widget_d2, DIGIT_RES[min % 10]);
+        f.setImageViewResource(R.id.widget_d3, DIGIT_RES[sec / 10]);
+        f.setImageViewResource(R.id.widget_d4, DIGIT_RES[sec % 10]);
+        if (alpha < 255) {
+            for (int id : new int[]{R.id.widget_d0, R.id.widget_d1, R.id.widget_d2,
+                    R.id.widget_colon, R.id.widget_d3, R.id.widget_d4}) {
+                f.setInt(id, "setImageAlpha", alpha);
+            }
+        }
+        return f;
     }
 
     /** Stopped: "wait" art when the phase is fresh (or the set is done),

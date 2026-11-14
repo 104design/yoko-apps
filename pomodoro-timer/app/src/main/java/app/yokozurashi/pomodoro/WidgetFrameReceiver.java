@@ -14,7 +14,7 @@ public class WidgetFrameReceiver extends BroadcastReceiver {
         }
         // Even if the finish alarm is delayed by battery saving, the phase
         // still advances here (checked every frame tick) instead of the
-        // widget chronometer running into negative time.
+        // widget countdown looping past zero.
         String changed = PhaseAdvancer.advanceIfFinished(context);
         WidgetAnimHelper.flipFrame(context);
         if (changed != null || !WidgetAnimHelper.USE_FLIPPER) {

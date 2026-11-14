@@ -80,7 +80,9 @@ public class TimerState {
     }
 
     public void pause() {
-        remainingMs = remainingNow();
+        // keep whole seconds (rounded up, as the digits show it): the
+        // widget's self-flipping digits need each start to fall on a second
+        remainingMs = Math.min(totalMs(), ((remainingNow() + 999) / 1000) * 1000);
         running = false;
         endAtMs = 0;
     }
