@@ -80,7 +80,7 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
         android:layout_marginLeft="14dp"
-        android:layout_marginBottom="46dp"
+        android:layout_marginBottom="44dp"
         android:autoStart="true"
         android:flipInterval="40">
         <ImageView

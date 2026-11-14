@@ -21,8 +21,7 @@ import java.util.Calendar;
  * 寸法は SPEC.md の「仕様書 1: 画面」。単位は dp。
  */
 public class DateBlock {
-    public static final int MAX_WIDTH_DP = 160;
-    public static final int MIN_WIDTH_DP = 110;
+    /** 拡大率1のときの高さ（dp）。 */
     public static final int HEIGHT_DP = 100;
 
     private static final int INK = 0xFF141414;
@@ -41,19 +40,22 @@ public class DateBlock {
     private static final float DIGIT_GAP = 3;
 
     /**
-     * @param widthDp このブロックに使える幅。右のキャラに重ならないよう、ウィジェットの幅から決める
+     * @param scale        拡大率。大きいウィジェットでは日付を大きく描く
+     * @param widthDp      画像の幅（実寸のdp）
+     * @param labelRightDp 天気・地名の文字を収める右端（実寸のdp）。右のキャラの髪に重ならない位置
      * @param kind  天気アイコンの種類（Weather.SUN など）。Weather.NONE ならアイコンなし
      * @param temp  気温の表示（例「18°」）。取れていないときは「--°」
      * @param label 天気と地名（例「晴れ・渋谷区」）。なければ null
      */
-    public static Bitmap render(Context ctx, Calendar now, int widthDp, int kind, String temp, String label) {
+    public static Bitmap render(Context ctx, Calendar now, float scale, float widthDp, float labelRightDp,
+                                int kind, String temp, String label) {
         Resources res = ctx.getResources();
         float d = res.getDisplayMetrics().density;
-        widthDp = Math.max(MIN_WIDTH_DP, Math.min(MAX_WIDTH_DP, widthDp));
-        Bitmap bmp = Bitmap.createBitmap(Math.round(widthDp * d), Math.round(HEIGHT_DP * d),
-                Bitmap.Config.ARGB_8888);
+        Bitmap bmp = Bitmap.createBitmap(Math.max(1, Math.round(widthDp * d)),
+                Math.round(HEIGHT_DP * scale * d), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
-        c.scale(d, d); // 以降は dp で描く
+        c.scale(d * scale, d * scale); // 以降は「拡大率1のときの dp」で描く
+        float labelRight = labelRightDp / scale;
 
         Typeface black = res.getFont(R.font.zen_maru_black);
         Typeface bold = res.getFont(R.font.zen_maru_bold);
@@ -76,7 +78,7 @@ public class DateBlock {
         if (label != null && label.length() > 0) {
             float lx = week.measureText(weekday) + 8;
             TextPaint labelPaint = text(bold, 11, GRAY);
-            CharSequence fit = TextUtils.ellipsize(label, labelPaint, widthDp - lx, TextUtils.TruncateAt.END);
+            CharSequence fit = TextUtils.ellipsize(label, labelPaint, Math.max(0, labelRight - lx), TextUtils.TruncateAt.END);
             c.drawText(fit, 0, fit.length(), lx, bottom + 15.5f, labelPaint);
         }
 

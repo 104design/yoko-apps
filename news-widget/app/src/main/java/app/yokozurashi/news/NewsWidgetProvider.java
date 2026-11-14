@@ -7,6 +7,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.TypedValue;
 import android.widget.RemoteViews;
 
 import java.util.Calendar;
@@ -63,12 +66,32 @@ public class NewsWidgetProvider extends AppWidgetProvider {
     }
 
     private static RemoteViews build(Context context, AppWidgetManager manager, int id) {
-        // 日付のブロックは、右のキャラに重ならない幅で描く。キャラは右端から約150dpまで張り出す
-        int widthDp = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
-        if (widthDp <= 0) widthDp = 300;
+        // ウィジェットの大きさ（縦持ちのときの幅と高さ）から、日付とキャラの大きさを決める
+        Bundle options = manager.getAppWidgetOptions(id);
+        int w = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+        int h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+        if (w <= 0) w = 315;
+        if (h <= 0) h = 260;
+        // 大きさの指定は Android 12 以上でしか効かない。それより古い端末はレイアウトXMLの値のまま
+        boolean canResize = Build.VERSION.SDK_INT >= 31;
+        WidgetLayout layout = canResize ? new WidgetLayout(w, h) : new WidgetLayout(380, 180);
+
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_news);
+        if (canResize) {
+            views.setViewLayoutWidth(R.id.character, layout.charWidth, TypedValue.COMPLEX_UNIT_DIP);
+            views.setViewLayoutHeight(R.id.character, layout.charHeight, TypedValue.COMPLEX_UNIT_DIP);
+            views.setViewLayoutMargin(R.id.character, RemoteViews.MARGIN_RIGHT,
+                    layout.charMarginRight, TypedValue.COMPLEX_UNIT_DIP);
+            views.setViewLayoutMargin(R.id.character, RemoteViews.MARGIN_BOTTOM,
+                    layout.charMarginBottom, TypedValue.COMPLEX_UNIT_DIP);
+            views.setViewLayoutWidth(R.id.date_block, layout.dateWidth, TypedValue.COMPLEX_UNIT_DIP);
+            views.setViewLayoutHeight(R.id.date_block,
+                    DateBlock.HEIGHT_DP * layout.dateScale, TypedValue.COMPLEX_UNIT_DIP);
+        }
+        float dateWidth = canResize ? layout.dateWidth : 160;
         views.setImageViewBitmap(R.id.date_block,
-                DateBlock.render(context, Calendar.getInstance(), widthDp - 150, Weather.kind(context),
+                DateBlock.render(context, Calendar.getInstance(), layout.dateScale, dateWidth,
+                        Math.min(dateWidth, layout.labelRight), Weather.kind(context),
                         Weather.tempText(context), weatherLabel(context)));
         bindNews(context, views);
 
@@ -84,7 +107,7 @@ public class NewsWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id,
-                                          android.os.Bundle options) {
+                                          Bundle options) {
         manager.updateAppWidget(id, build(context, manager, id));
     }
 
