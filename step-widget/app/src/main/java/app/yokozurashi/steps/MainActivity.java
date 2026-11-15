@@ -1,12 +1,11 @@
 package app.yokozurashi.steps;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.DialogInterface;
-import android.os.Build;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -20,7 +19,7 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * アプリの画面。役割は、歩数の利用の許可をもらうこと、旅のようすを見せること、歩幅を決めること。
+ * アプリの画面。役割は、ヘルスコネクトの歩数を読む許可をもらうこと、旅のようすを見せること、歩幅を決めること。
  * 開くたびに歩数を読み直す。
  */
 public class MainActivity extends Activity {
@@ -29,6 +28,7 @@ public class MainActivity extends Activity {
 
     private TextView permissionStatus;
     private Button permissionButton;
+    private Button healthButton;
     private TextView journeyStatus;
     private TextView strideStatus;
     private TextView passedList;
@@ -60,16 +60,28 @@ public class MainActivity extends Activity {
         root.addView(text("歩数", 16, pad));
         permissionStatus = text("", 14, dp(6));
         root.addView(permissionStatus);
-        permissionButton = button("歩数の利用を許可する");
+        permissionButton = button("歩数の読み取りを許可する");
         permissionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (Build.VERSION.SDK_INT >= 29) {
-                    requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, REQ_ACTIVITY);
-                }
+                requestPermissions(new String[]{StepReader.PERMISSION_STEPS,
+                        StepReader.PERMISSION_BACKGROUND}, REQ_ACTIVITY);
             }
         });
         root.addView(permissionButton);
+        healthButton = button("ヘルスコネクトを開く");
+        healthButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    startActivity(new Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"));
+                } catch (RuntimeException e) {
+                    Toast.makeText(MainActivity.this, "ヘルスコネクトを開けませんでした。端末の設定から開いてください",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+        root.addView(healthButton);
 
         root.addView(text("旅のようす", 16, pad));
         journeyStatus = text("", 14, dp(6));
@@ -110,7 +122,8 @@ public class MainActivity extends Activity {
         });
         root.addView(add);
         root.addView(text("ウィジェットの上半分をタップするとこの画面が開き、"
-                + "下半分をタップするとその場で歩数を読み直します。", 13, dp(6)));
+                + "下半分をタップするとその場で歩数を読み直します"
+                + "（バックグラウンドでの読み取りが許可されていないときは、下半分もこの画面を開きます）。", 13, dp(6)));
 
         root.addView(text("これまでにずらしたもの", 16, pad));
         passedList = text("", 14, dp(6));
@@ -126,7 +139,7 @@ public class MainActivity extends Activity {
         });
         root.addView(restart);
 
-        root.addView(text("歩数は端末の歩数センサーから読み、この端末の中だけに保存します。"
+        root.addView(text("歩数はヘルスコネクトから読み、この端末の中だけに保存します。"
                 + "距離は「歩数×歩幅」、道のりは地点どうしの直線距離です。", 13, pad));
 
         ScrollView scroll = new ScrollView(this);
@@ -157,17 +170,27 @@ public class MainActivity extends Activity {
 
     private void show() {
         int status = StepReader.status(this);
-        if (status == StepReader.NO_SENSOR) {
-            permissionStatus.setText("この端末には歩数センサーがないため、歩数を数えられません。");
+        if (status == StepReader.UNSUPPORTED) {
+            permissionStatus.setText("この端末では使えません。ヘルスコネクトが本体に入っている Android 14 以上が必要です。");
             permissionButton.setVisibility(View.GONE);
+            healthButton.setVisibility(View.GONE);
         } else if (status == StepReader.NO_PERMISSION) {
-            permissionStatus.setText("歩数の利用（身体活動）が許可されていません。許可すると、歩いたぶんだけ旅が進みます。");
+            permissionStatus.setText("ヘルスコネクトの歩数を読む許可がありません。許可すると、歩いたぶんだけ旅が進みます。\n"
+                    + "ボタンを押しても何も出ないときは、ヘルスコネクトを開いて「アプリの権限」からこのアプリに歩数を許可してください。");
             permissionButton.setVisibility(View.VISIBLE);
+            healthButton.setVisibility(View.VISIBLE);
         } else {
             long read = StepStore.readTime(this);
+            boolean background = StepReader.canReadInBackground(this);
             permissionStatus.setText("許可済み。" + (read == 0 ? "まだ歩数を読めていません。"
-                    : "最後に読めたのは " + when(read) + "。"));
-            permissionButton.setVisibility(View.GONE);
+                    : "最後に読めたのは " + when(read) + "。")
+                    + (background ? "\nこの画面を閉じていても、約15分ごとに読みます。"
+                    : "\nバックグラウンドでの読み取りが許可されていないので、歩数はこの画面を開いたときにだけ進みます。"
+                    + "ヘルスコネクトでこのアプリの「バックグラウンドでのデータの読み取り」を許可すると、閉じていても進みます。")
+                    + "\n歩数が0のままのときは、歩数を記録しているアプリや時計が、ヘルスコネクトに歩数を書きこむ設定になっているか確かめてください。");
+            permissionButton.setVisibility(background ? View.GONE : View.VISIBLE);
+            permissionButton.setText(background ? "歩数の読み取りを許可する" : "バックグラウンドでの読み取りを許可する");
+            healthButton.setVisibility(View.VISIBLE);
         }
 
         int stride = StepStore.stride(this);

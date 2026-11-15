@@ -2,57 +2,69 @@ package app.yokozurashi.steps;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.provider.Settings;
 
 import java.util.Calendar;
 
 /**
- * 歩数の帳簿。
- * 歩数センサーの値は「端末を起動してからの累計」なので、前に読んだ値との差を足していく。
- * 読むのがときどきでも、起動中に歩いたぶんは取りこぼさない。
- * 再起動をまたぐと、最後に読んでから電源を切るまでのぶんだけは数えられない。
+ * 歩数の帳簿。歩数そのものはヘルスコネクトが持っていて、ここには読んだ結果を控える。
+ *
+ * 累計は「締めたぶん（BASE）」と「まだ締めていないぶん（OPEN）」の足し算。
+ * 締めていない期間（締めた時刻から今まで）は、読むたびにヘルスコネクトで数え直す。
+ * だから、時計があとからまとめて送ってきた歩数も、2日ほどのあいだは取りこめる。
+ * それより前は締めて BASE に足しこむ。ヘルスコネクトの古いデータが消されても、累計は減らない。
  */
 public class StepStore {
     public static final int STRIDE_DEFAULT = 70, STRIDE_MIN = 40, STRIDE_MAX = 100; // 歩幅（cm）
 
-    private static final String COUNTER = "counter"; // 最後に読んだセンサーの値。まだ読んでいなければ -1
-    private static final String BOOT = "boot";       // そのときの起動回数
-    private static final String TOTAL = "total";     // 旅を始めてからの歩数
+    private static final String BASE = "base";       // 締めた時刻までの歩数
+    private static final String CLOSED = "closed";   // 締めた時刻。はじめは旅を始めた時刻と同じ
+    private static final String OPEN = "open";       // 締めた時刻から、最後に読んだときまでの歩数
     private static final String DAY = "day";         // 「きょうの歩数」の日付（20261115 の形）
     private static final String TODAY = "today";     // その日の歩数
     private static final String START = "start";     // 旅を始めた時刻
-    private static final String READ = "read";       // 最後にセンサーを読めた時刻
+    private static final String READ = "read";       // 最後に読めた時刻
     private static final String STRIDE = "stride";
     private static final String BONUS = "bonus";     // 表示の確認用に足す距離（m）
 
-    /** センサーの値を1つ受け取り、前回との差を歩数に足す。 */
-    public static synchronized void apply(Context ctx, long counter) {
+    /**
+     * どこから数えるか（締めた時刻）を返す。はじめて呼ばれたときが旅の出発で、
+     * その日の0時から数える（出発した日の歩数は、朝のぶんから入る）。
+     */
+    public static synchronized long closedTime(Context ctx, long now) {
         SharedPreferences p = Store.prefs(ctx);
-        long last = p.getLong(COUNTER, -1);
-        int boot = bootCount(ctx);
-        long delta;
-        if (last < 0) {
-            delta = 0; // はじめて読んだ。ここを旅の出発点にする
-        } else if (boot != p.getInt(BOOT, boot) || counter < last) {
-            delta = counter; // 再起動していた。センサーは0から数え直している
-        } else {
-            delta = counter - last;
+        long closed = p.getLong(CLOSED, 0);
+        if (closed == 0) {
+            closed = Math.min(now, StepReader.todayStart());
+            p.edit().putLong(CLOSED, closed).putLong(START, closed).apply();
         }
-        int day = dayKey();
-        long today = p.getInt(DAY, 0) == day ? p.getLong(TODAY, 0) : 0;
-        SharedPreferences.Editor e = p.edit()
-                .putLong(COUNTER, counter)
-                .putInt(BOOT, boot)
-                .putLong(TOTAL, p.getLong(TOTAL, 0) + delta)
-                .putInt(DAY, day)
-                .putLong(TODAY, today + delta)
-                .putLong(READ, System.currentTimeMillis());
-        if (p.getLong(START, 0) == 0) e.putLong(START, System.currentTimeMillis());
-        e.apply();
+        return closed;
     }
 
+    /** 読んだ結果を控える。open は締めた時刻から今まで、today はきょうの0時から今までの歩数。 */
+    public static synchronized void update(Context ctx, long open, long today, long now) {
+        Store.prefs(ctx).edit()
+                .putLong(OPEN, open)
+                .putInt(DAY, dayKey())
+                .putLong(TODAY, today)
+                .putLong(READ, now)
+                .apply();
+    }
+
+    /** from から until までを締める。steps はその期間の歩数。 */
+    public static synchronized void close(Context ctx, long from, long until, long steps) {
+        SharedPreferences p = Store.prefs(ctx);
+        if (p.getLong(CLOSED, 0) != from) return; // そのあいだに旅をやり直していた
+        p.edit()
+                .putLong(BASE, p.getLong(BASE, 0) + steps)
+                .putLong(CLOSED, until)
+                .putLong(OPEN, Math.max(0, p.getLong(OPEN, 0) - steps))
+                .apply();
+    }
+
+    /** 旅を始めてからの歩数。 */
     public static long total(Context ctx) {
-        return Store.prefs(ctx).getLong(TOTAL, 0);
+        SharedPreferences p = Store.prefs(ctx);
+        return p.getLong(BASE, 0) + p.getLong(OPEN, 0);
     }
 
     /** きょうの歩数。日付が変わってからまだ読んでいなければ 0。 */
@@ -93,27 +105,20 @@ public class StepStore {
         p.edit().putLong(BONUS, p.getLong(BONUS, 0) + meters).apply();
     }
 
-    /** 旅を出発点からやり直す。センサーの読み取り位置は残すので、このあと歩いたぶんから数える。 */
-    public static void restart(Context ctx) {
+    /** 旅を出発点からやり直す。いまより後に歩いたぶんから数える。 */
+    public static synchronized void restart(Context ctx) {
+        long now = System.currentTimeMillis();
         Store.prefs(ctx).edit()
-                .putLong(TOTAL, 0)
-                .putLong(TODAY, 0)
+                .putLong(BASE, 0)
+                .putLong(OPEN, 0)
                 .putLong(BONUS, 0)
-                .putLong(START, System.currentTimeMillis())
+                .putLong(CLOSED, now)
+                .putLong(START, now)
                 .apply();
     }
 
     private static int dayKey() {
         Calendar c = Calendar.getInstance();
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH);
-    }
-
-    /** 端末の起動回数。取れない端末では 0 を返し、そのときはセンサーの値が減ったことで再起動を見分ける。 */
-    private static int bootCount(Context ctx) {
-        try {
-            return Settings.Global.getInt(ctx.getContentResolver(), Settings.Global.BOOT_COUNT);
-        } catch (Exception e) {
-            return 0;
-        }
     }
 }
