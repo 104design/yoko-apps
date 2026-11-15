@@ -101,7 +101,7 @@ public class Route {
             "監獄の門", "ヒグマ", "摩周湖の霧", "タンチョウ",
             "日の出",
     };
-    /** その地点だけの絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の絵を使う。 */
+    /** その地点の名物の絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の形の絵を使う。 */
     public static final String[] PICTURE = {
             "meibutsu_47_1", "meibutsu_47_2", "meibutsu_47_3", "meibutsu_47_4",
             "meibutsu_47_5", "meibutsu_47_6", "meibutsu_47_7", "meibutsu_46_1",
@@ -141,33 +141,33 @@ public class Route {
             "meibutsu_01_11", "meibutsu_01_12", "meibutsu_01_13", "meibutsu_01_14",
             "meibutsu_01_15",
     };
-    /** その都道府県の絵の名前（meibutsu_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
+    /** その都道府県の形の絵の名前（pref_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
     public static final String[] PREF_PICTURE = {
-            "meibutsu_47", "meibutsu_47", "meibutsu_47", "meibutsu_47", "meibutsu_47", "meibutsu_47",
-            "meibutsu_47", "meibutsu_46", "meibutsu_46", "meibutsu_46", "meibutsu_46", "meibutsu_46",
-            "meibutsu_46", "meibutsu_46", "meibutsu_45", "meibutsu_45", "meibutsu_45", "meibutsu_45",
-            "meibutsu_43", "meibutsu_43", "meibutsu_43", "meibutsu_42", "meibutsu_42", "meibutsu_42",
-            "meibutsu_41", "meibutsu_41", "meibutsu_41", "meibutsu_40", "meibutsu_40", "meibutsu_40",
-            "meibutsu_44", "meibutsu_44", "meibutsu_44", "meibutsu_44", "meibutsu_38", "meibutsu_38",
-            "meibutsu_39", "meibutsu_39", "meibutsu_39", "meibutsu_36", "meibutsu_36", "meibutsu_37",
-            "meibutsu_37", "meibutsu_38", "meibutsu_38", "meibutsu_34", "meibutsu_34", "meibutsu_34",
-            "meibutsu_35", "meibutsu_35", "meibutsu_35", "meibutsu_35", "meibutsu_32", "meibutsu_32",
-            "meibutsu_32", "meibutsu_31", "meibutsu_31", "meibutsu_31", "meibutsu_33", "meibutsu_33",
-            "meibutsu_33", "meibutsu_28", "meibutsu_28", "meibutsu_28", "meibutsu_27", "meibutsu_30",
-            "meibutsu_30", "meibutsu_30", "meibutsu_24", "meibutsu_29", "meibutsu_26", "meibutsu_25",
-            "meibutsu_18", "meibutsu_18", "meibutsu_18", "meibutsu_17", "meibutsu_17", "meibutsu_16",
-            "meibutsu_16", "meibutsu_16", "meibutsu_21", "meibutsu_21", "meibutsu_21", "meibutsu_21",
-            "meibutsu_23", "meibutsu_23", "meibutsu_22", "meibutsu_22", "meibutsu_22", "meibutsu_19",
-            "meibutsu_20", "meibutsu_20", "meibutsu_20", "meibutsu_10", "meibutsu_20", "meibutsu_10",
-            "meibutsu_11", "meibutsu_11", "meibutsu_13", "meibutsu_14", "meibutsu_14", "meibutsu_12",
-            "meibutsu_12", "meibutsu_12", "meibutsu_08", "meibutsu_08", "meibutsu_09", "meibutsu_09",
-            "meibutsu_09", "meibutsu_07", "meibutsu_07", "meibutsu_15", "meibutsu_15", "meibutsu_15",
-            "meibutsu_06", "meibutsu_06", "meibutsu_06", "meibutsu_04", "meibutsu_04", "meibutsu_03",
-            "meibutsu_03", "meibutsu_03", "meibutsu_03", "meibutsu_05", "meibutsu_05", "meibutsu_05",
-            "meibutsu_02", "meibutsu_02", "meibutsu_02", "meibutsu_02", "meibutsu_01", "meibutsu_01",
-            "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01",
-            "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01", "meibutsu_01",
-            "meibutsu_01",
+            "pref_47", "pref_47", "pref_47", "pref_47", "pref_47", "pref_47",
+            "pref_47", "pref_46", "pref_46", "pref_46", "pref_46", "pref_46",
+            "pref_46", "pref_46", "pref_45", "pref_45", "pref_45", "pref_45",
+            "pref_43", "pref_43", "pref_43", "pref_42", "pref_42", "pref_42",
+            "pref_41", "pref_41", "pref_41", "pref_40", "pref_40", "pref_40",
+            "pref_44", "pref_44", "pref_44", "pref_44", "pref_38", "pref_38",
+            "pref_39", "pref_39", "pref_39", "pref_36", "pref_36", "pref_37",
+            "pref_37", "pref_38", "pref_38", "pref_34", "pref_34", "pref_34",
+            "pref_35", "pref_35", "pref_35", "pref_35", "pref_32", "pref_32",
+            "pref_32", "pref_31", "pref_31", "pref_31", "pref_33", "pref_33",
+            "pref_33", "pref_28", "pref_28", "pref_28", "pref_27", "pref_30",
+            "pref_30", "pref_30", "pref_24", "pref_29", "pref_26", "pref_25",
+            "pref_18", "pref_18", "pref_18", "pref_17", "pref_17", "pref_16",
+            "pref_16", "pref_16", "pref_21", "pref_21", "pref_21", "pref_21",
+            "pref_23", "pref_23", "pref_22", "pref_22", "pref_22", "pref_19",
+            "pref_20", "pref_20", "pref_20", "pref_10", "pref_20", "pref_10",
+            "pref_11", "pref_11", "pref_13", "pref_14", "pref_14", "pref_12",
+            "pref_12", "pref_12", "pref_08", "pref_08", "pref_09", "pref_09",
+            "pref_09", "pref_07", "pref_07", "pref_15", "pref_15", "pref_15",
+            "pref_06", "pref_06", "pref_06", "pref_04", "pref_04", "pref_03",
+            "pref_03", "pref_03", "pref_03", "pref_05", "pref_05", "pref_05",
+            "pref_02", "pref_02", "pref_02", "pref_02", "pref_01", "pref_01",
+            "pref_01", "pref_01", "pref_01", "pref_01", "pref_01", "pref_01",
+            "pref_01", "pref_01", "pref_01", "pref_01", "pref_01", "pref_01",
+            "pref_01",
     };
     /** 出発点からその地点までの道のり（m）。 */
     public static final int[] AT_M = {

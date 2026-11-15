@@ -47,8 +47,9 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     # 名物の絵。なければ薄い丸に都道府県の名前
     pic_left = w - PICTURE_RIGHT - PICTURE
     cx, cy = pic_left + PICTURE / 2, PICTURE_TOP + PICTURE / 2
-    # その地点だけの絵（meibutsu_NN_M）があればそれを、なければ都道府県の絵（meibutsu_NN）を使う
-    paths = [os.path.join(RES, "drawable-nodpi", n + ".png") for n in (picture, picture.rsplit("_", 1)[0])]
+    # 名物の絵（meibutsu_NN_M）があればそれを、なければ都道府県の形の絵（pref_NN）を使う
+    paths = [os.path.join(RES, "drawable-nodpi", n + ".png")
+             for n in (picture, "pref_" + picture.split("_")[1])]
     path = next((x for x in paths if os.path.exists(x)), None)
     if path:
         pic = Image.open(path).convert("RGBA")

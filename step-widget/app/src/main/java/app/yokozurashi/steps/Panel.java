@@ -72,14 +72,31 @@ public class Panel {
         public float yokoSize() {
             return YOKO_BOX * scale;
         }
+
+        /** 帯の位置と大きさ（実寸のdp）。帯のタップを受ける枠を、ここに重ねる。 */
+        public float bandLeft() {
+            return BAND_SIDE * scale;
+        }
+
+        public float bandTopDp() {
+            return bandTop * scale;
+        }
+
+        public float bandWidth() {
+            return (w - BAND_SIDE * 2) * scale;
+        }
+
+        public float bandHeight() {
+            return BAND_H * scale;
+        }
     }
 
     /** 描く内容。 */
     public static class Content {
         public String place;   // 1行目（「沖縄県 那覇」）
         public String pref;    // 都道府県（絵がまだないときの仮の丸に書く）
-        public String picture;     // この地点だけの絵の名前（meibutsu_NN_M）
-        public String prefPicture; // この都道府県の絵の名前（meibutsu_NN）
+        public String picture;     // この地点の名物の絵の名前（meibutsu_NN_M）
+        public String prefPicture; // この都道府県の形の絵の名前（pref_NN）
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
         public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
@@ -90,7 +107,8 @@ public class Panel {
     }
 
     /**
-     * 出す絵を選ぶ。その地点だけの絵があればそれを、なければ都道府県の絵を使う。どちらもなければ 0。
+     * 出す絵を選ぶ。絵は2段になっていて、下の段が都道府県の形の絵、上の段がその地点の名物の絵。
+     * 名物の絵があればそれを、なければ都道府県の形の絵を使う。どちらもなければ 0。
      * 絵は res/drawable-nodpi にファイルを置くだけで増やせる（名前は SPEC.md の「名物の絵」）。
      */
     public static int pictureRes(Context ctx, String picture, String prefPicture) {

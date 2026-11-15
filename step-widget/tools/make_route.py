@@ -26,10 +26,10 @@ public class Route {
     /** その地点から次の地点まで、よこずらしがずらしていくもの。 */
     public static final String[] ITEM = {
 %s    };
-    /** その地点だけの絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の絵を使う。 */
+    /** その地点の名物の絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の形の絵を使う。 */
     public static final String[] PICTURE = {
 %s    };
-    /** その都道府県の絵の名前（meibutsu_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
+    /** その都道府県の形の絵の名前（pref_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
     public static final String[] PREF_PICTURE = {
 %s    };
     /** 出発点からその地点までの道のり（m）。 */
@@ -67,8 +67,8 @@ def load():
             cols = line.split(",")
             name, pref, lat, lon, item, number = cols[:6]
             code = PREFS.index(pref) + 1
-            points.append((name, pref, float(lat), float(lon), item, len(cols) > 6 and cols[6] == "絵",
-                           "meibutsu_%02d_%d" % (code, int(number)), "meibutsu_%02d" % code))
+            points.append((name, pref, float(lat), float(lon), item, None,
+                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code))
     names = [p[6] for p in points]
     assert len(set(names)) == len(names), "絵の番号が、同じ都道府県の中で重なっている"
     return points
@@ -107,13 +107,13 @@ def main():
 def pictures():
     """絵のファイル名の一覧（通る順）を、Markdown の表にして表示する。
 
-    都道府県の絵（47枚）と、地点だけの絵（あとから足すぶん）の両方を出す。
+    都道府県の形の絵（まず用意する47枚）と、名物の絵（あとから足すぶん）の両方を出す。
     """
     lines = []
     for p in load():
         lines.append("| %s | %s | %s | %s | `%s.png` |" % (
-            p[1], p[0], p[4], "`%s.png`" % p[7] if p[5] else "", p[6]))
-    print("| 都道府県 | 地点 | 名物 | 都道府県の絵（まず描く47枚） | 地点だけの絵（あとから足す） |\n"
+            p[1], p[0], p[4], "`%s.png`" % p[7], p[6]))
+    print("| 都道府県 | 地点 | 名物 | 都道府県の形の絵（まず用意する47枚） | 名物の絵（あとから足す） |\n"
           "| --- | --- | --- | --- | --- |\n" + "\n".join(lines))
 
 

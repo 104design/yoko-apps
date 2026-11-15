@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
@@ -122,7 +123,27 @@ public class StepWidgetProvider extends AppWidgetProvider {
         // 裏から読めないとき（許可がまだ、など）は、下半分もアプリを開く。アプリを開けば読める
         boolean canReread = status == StepReader.OK && StepReader.canReadInBackground(context);
         views.setOnClickPendingIntent(R.id.tap_bottom, canReread ? reread : app);
+
+        // 帯をタップしたら、いまずらしている名物をブラウザで検索する
+        int bandLeft = clamp(Math.round(lay.bandLeft() * density), 0, wPx);
+        int bandTop = clamp(Math.round(lay.bandTopDp() * density), 0, hPx);
+        views.setViewPadding(R.id.band_box, bandLeft, bandTop,
+                Math.max(0, wPx - bandLeft - Math.round(lay.bandWidth() * density)),
+                Math.max(0, hPx - bandTop - Math.round(lay.bandHeight() * density)));
+        PendingIntent bandTap = app;
+        if (status == StepReader.OK) {
+            Intent search = new Intent(Intent.ACTION_VIEW, searchUrl(j));
+            search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            bandTap = PendingIntent.getActivity(context, 4, search,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        views.setOnClickPendingIntent(R.id.tap_band, bandTap);
         return views;
+    }
+
+    /** 名物の検索結果のURL。同じ名前のものと区別がつくよう、都道府県の名前を添えて検索する。 */
+    static Uri searchUrl(Journey j) {
+        return Uri.parse("https://www.google.com/search?q=" + Uri.encode(j.item + " " + j.pref));
     }
 
     private static int clamp(int v, int lo, int hi) {
