@@ -78,7 +78,8 @@ public class Panel {
     public static class Content {
         public String place;   // 1行目（「沖縄県 那覇」）
         public String pref;    // 都道府県（絵がまだないときの仮の丸に書く）
-        public int prefCode;   // 都道府県の番号。絵 meibutsu_NN を選ぶ
+        public String picture;     // この地点だけの絵の名前（meibutsu_NN_M）
+        public String prefPicture; // この都道府県の絵の名前（meibutsu_NN）
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
         public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
@@ -88,10 +89,14 @@ public class Panel {
         public float progress; // 区間の進み具合
     }
 
-    /** その都道府県の名物の絵。まだ用意されていなければ 0。 */
-    public static int pictureRes(Context ctx, int prefCode) {
-        return ctx.getResources().getIdentifier(
-                String.format("meibutsu_%02d", prefCode), "drawable", ctx.getPackageName());
+    /**
+     * 出す絵を選ぶ。その地点だけの絵があればそれを、なければ都道府県の絵を使う。どちらもなければ 0。
+     * 絵は res/drawable-nodpi にファイルを置くだけで増やせる（名前は SPEC.md の「名物の絵」）。
+     */
+    public static int pictureRes(Context ctx, String picture, String prefPicture) {
+        Resources res = ctx.getResources();
+        int id = res.getIdentifier(picture, "drawable", ctx.getPackageName());
+        return id != 0 ? id : res.getIdentifier(prefPicture, "drawable", ctx.getPackageName());
     }
 
     public static Bitmap render(Context ctx, Layout lay, float pxPerDp, Content t) {
@@ -108,10 +113,10 @@ public class Panel {
         Paint img = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        // 右上：いまいる都道府県の名物の絵
+        // 右上：名物の絵
         RectF pic = new RectF(lay.w - PICTURE_RIGHT - PICTURE, PICTURE_TOP,
                 lay.w - PICTURE_RIGHT, PICTURE_TOP + PICTURE);
-        int picRes = pictureRes(ctx, t.prefCode);
+        int picRes = pictureRes(ctx, t.picture, t.prefPicture);
         Bitmap picture = picRes == 0 ? null : BitmapFactory.decodeResource(res, picRes);
         if (picture != null) {
             // 縦横の比を保ったまま、枠の中央に収める

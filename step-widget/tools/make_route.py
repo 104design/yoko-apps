@@ -26,8 +26,11 @@ public class Route {
     /** その地点から次の地点まで、よこずらしがずらしていくもの。 */
     public static final String[] ITEM = {
 %s    };
-    /** 都道府県の番号（1 北海道 〜 47 沖縄県）。絵のファイル名 meibutsu_NN に使う。 */
-    public static final int[] PREF_CODE = {
+    /** その地点だけの絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の絵を使う。 */
+    public static final String[] PICTURE = {
+%s    };
+    /** その都道府県の絵の名前（meibutsu_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
+    public static final String[] PREF_PICTURE = {
 %s    };
     /** 出発点からその地点までの道のり（m）。 */
     public static final int[] AT_M = {
@@ -62,8 +65,12 @@ def load():
             if not line or line.startswith("#"):
                 continue
             cols = line.split(",")
-            name, pref, lat, lon, item = cols[:5]
-            points.append((name, pref, float(lat), float(lon), item, len(cols) > 5 and cols[5] == "絵"))
+            name, pref, lat, lon, item, number = cols[:6]
+            code = PREFS.index(pref) + 1
+            points.append((name, pref, float(lat), float(lon), item, len(cols) > 6 and cols[6] == "絵",
+                           "meibutsu_%02d_%d" % (code, int(number)), "meibutsu_%02d" % code))
+    names = [p[6] for p in points]
+    assert len(set(names)) == len(names), "絵の番号が、同じ都道府県の中で重なっている"
     return points
 
 
@@ -84,7 +91,8 @@ def main():
             rows([p[0] for p in points], '"%s"', 6),
             rows([p[1] for p in points], '"%s"', 6),
             rows([p[4] for p in points], '"%s"', 4),
-            rows([PREFS.index(p[1]) + 1 for p in points], "%d", 16),
+            rows([p[6] for p in points], '"%s"', 4),
+            rows([p[7] for p in points], '"%s"', 6),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))
     for i, p in enumerate(points):
@@ -97,12 +105,16 @@ def main():
 
 
 def pictures():
-    """絵にする名物の一覧（通る順）を、Markdown の表にして表示する。"""
-    seen = []
+    """絵のファイル名の一覧（通る順）を、Markdown の表にして表示する。
+
+    都道府県の絵（47枚）と、地点だけの絵（あとから足すぶん）の両方を出す。
+    """
+    lines = []
     for p in load():
-        if p[5]:
-            seen.append("| %s | %s | `meibutsu_%02d.png` |" % (p[1], p[4], PREFS.index(p[1]) + 1))
-    print("| 都道府県 | 絵にする名物 | ファイル名 |\n| --- | --- | --- |\n" + "\n".join(seen))
+        lines.append("| %s | %s | %s | %s | `%s.png` |" % (
+            p[1], p[0], p[4], "`%s.png`" % p[7] if p[5] else "", p[6]))
+    print("| 都道府県 | 地点 | 名物 | 都道府県の絵（まず描く47枚） | 地点だけの絵（あとから足す） |\n"
+          "| --- | --- | --- | --- | --- |\n" + "\n".join(lines))
 
 
 if __name__ == "__main__":

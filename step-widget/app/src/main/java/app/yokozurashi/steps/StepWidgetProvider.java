@@ -80,7 +80,8 @@ public class StepWidgetProvider extends AppWidgetProvider {
         Panel.Content t = new Panel.Content();
         t.place = j.pref + " " + j.place;
         t.pref = j.pref;
-        t.prefCode = j.prefCode;
+        t.picture = j.picture;
+        t.prefPicture = j.prefPicture;
         t.distanceM = j.distanceM;
         t.today = StepStore.today(context);
         t.progress = j.progress;

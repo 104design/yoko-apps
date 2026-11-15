@@ -30,7 +30,7 @@ def font(name, size, k):
     return ImageFont.truetype(os.path.join(RES, "font", "zen_maru_%s.ttf" % name), round(size * k))
 
 
-def render(width, height, pref, name, pref_code, distance_m, today, time, band, dst, progress, frame=1):
+def render(width, height, pref, name, picture, distance_m, today, time, band, dst, progress, frame=1):
     scale = max(0.8, min(1.8, min(width / BASE_W, height / BASE_H)))
     w, h = width / scale, height / scale
     k = PX * scale
@@ -47,8 +47,10 @@ def render(width, height, pref, name, pref_code, distance_m, today, time, band, 
     # 名物の絵。なければ薄い丸に都道府県の名前
     pic_left = w - PICTURE_RIGHT - PICTURE
     cx, cy = pic_left + PICTURE / 2, PICTURE_TOP + PICTURE / 2
-    path = os.path.join(RES, "drawable-nodpi", "meibutsu_%02d.png" % pref_code)
-    if os.path.exists(path):
+    # その地点だけの絵（meibutsu_NN_M）があればそれを、なければ都道府県の絵（meibutsu_NN）を使う
+    paths = [os.path.join(RES, "drawable-nodpi", n + ".png") for n in (picture, picture.rsplit("_", 1)[0])]
+    path = next((x for x in paths if os.path.exists(x)), None)
+    if path:
         pic = Image.open(path).convert("RGBA")
         fit = min(PICTURE * k / pic.width, PICTURE * k / pic.height)
         pic = pic.resize((round(pic.width * fit), round(pic.height * fit)), Image.LANCZOS)
@@ -120,13 +122,13 @@ def render(width, height, pref, name, pref_code, distance_m, today, time, band, 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "preview.png"
     shots = [
-        render(250, 172, "沖縄県", "那覇", 47, 541000, 6543, "12:34", "シーサーをずらしています",
+        render(250, 172, "沖縄県", "那覇", "meibutsu_47_5", 541000, 6543, "12:34", "シーサーをずらしています",
                "読谷まで あと11.5km", 0.47, 1),
-        render(250, 172, "沖縄県", "与那国島", 47, 0, 0, None, "タップして歩数の読み取りを許可",
+        render(250, 172, "沖縄県", "与那国島", "meibutsu_47_1", 0, 0, None, "タップして歩数の読み取りを許可",
                "西表島まで あと84.4km", 0.0, 4),
-        render(250, 172, "岐阜県", "白川郷", 21, 12987300, 12045, "8:05", "合掌造りの屋根をずらしています",
+        render(250, 172, "岐阜県", "白川郷", "meibutsu_21_2", 12987300, 12045, "8:05", "合掌造りの屋根をずらしています",
                "郡上まで あと19.9km", 0.65, 6),
-        render(315, 260, "静岡県", "富士山", 22, 4945800, 8210, "18:20", "富士山をずらしています",
+        render(315, 260, "静岡県", "富士山", "meibutsu_22_3", 4945800, 8210, "18:20", "富士山をずらしています",
                "甲府まで あと27.8km", 0.24, 8),
     ]
     gap = 24 * PX
