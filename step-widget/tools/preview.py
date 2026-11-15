@@ -15,11 +15,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RES = os.path.join(HERE, "..", "app", "src", "main", "res")
 PX = 3  # 1dp あたりの画素数
 
-INK, MAGENTA, GRAY, TEAL, WHITE = "#141414", "#C8387A", "#5A5A5A", "#72CFCB", "#FFFFFF"
+INK, GRAY, WHITE = "#141414", "#5A5A5A", "#FFFFFF"
+ACCENT, ACCENT_DARK, ACCENT_PALE = "#EE7948", "#C4501F", "#FCE4D9"
 BASE_W, BASE_H = 250, 172
 SIDE = 16
-DIGIT_TOP, DIGIT_H, DIGIT_GAP = 32, 32, 3
-BAND_SIDE, BAND_TOP, BAND_H = 10, 74, 34
+DIGIT_TOP, DIGIT_H, DIGIT_GAP = 31, 32, 3
+PICTURE, PICTURE_TOP, PICTURE_RIGHT = 66, 10, 14
+BAND_SIDE, BAND_TOP, BAND_H = 10, 88, 30
 TRACK_SIDE, TRACK_UP = 26, 26
 YOKO_BOX, YOKO_FEET = 60, 0.77
 
@@ -28,7 +30,7 @@ def font(name, size, k):
     return ImageFont.truetype(os.path.join(RES, "font", "zen_maru_%s.ttf" % name), round(size * k))
 
 
-def render(width, height, place, note, distance_m, today, band, src, dst, progress, frame=1):
+def render(width, height, pref, name, pref_code, distance_m, today, time, band, dst, progress, frame=1):
     scale = max(0.8, min(1.8, min(width / BASE_W, height / BASE_H)))
     w, h = width / scale, height / scale
     k = PX * scale
@@ -42,26 +44,50 @@ def render(width, height, place, note, distance_m, today, band, src, dst, progre
     bold = lambda size: font("bold", size, k)
     black = lambda size: font("black", size, k)
 
-    if note:
-        text(note, right, 25, bold(10), GRAY, "rs")
-    text(place, SIDE, 25, bold(13), MAGENTA)
+    # 名物の絵。なければ薄い丸に都道府県の名前
+    pic_left = w - PICTURE_RIGHT - PICTURE
+    cx, cy = pic_left + PICTURE / 2, PICTURE_TOP + PICTURE / 2
+    path = os.path.join(RES, "drawable-nodpi", "meibutsu_%02d.png" % pref_code)
+    if os.path.exists(path):
+        pic = Image.open(path).convert("RGBA")
+        fit = min(PICTURE * k / pic.width, PICTURE * k / pic.height)
+        pic = pic.resize((round(pic.width * fit), round(pic.height * fit)), Image.LANCZOS)
+        img.alpha_composite(pic, (round(cx * k - pic.width / 2), round(cy * k - pic.height / 2)))
+    else:
+        r = (PICTURE / 2 - 2) * k
+        d.ellipse([cx * k - r, cy * k - r, cx * k + r, cy * k + r], fill=ACCENT_PALE)
+        d.text((cx * k, (cy + 4) * k), pref, font=bold(11), fill=ACCENT_DARK, anchor="ms")
+    left_room = pic_left - 8 - SIDE
 
+    text(pref + " " + name, SIDE, 25, bold(13), ACCENT_DARK)
+
+    # 累計の距離。幅に入らなければ全体を縮める
     bottom = DIGIT_TOP + DIGIT_H
+    digits = [Image.open(os.path.join(RES, "drawable-nodpi", "num_%s.png" % ch)).convert("RGBA")
+              for ch in str(distance_m // 1000)]
+    tail = ".%dkm" % (distance_m % 1000 // 100)
+    need = sum(DIGIT_H * g.width / g.height + DIGIT_GAP for g in digits) + d.textlength(tail, font=black(15)) / k
+    z = min(1, left_room / need)
     x = SIDE
-    for ch in str(distance_m // 1000):
-        digit = Image.open(os.path.join(RES, "drawable-nodpi", "num_%s.png" % ch)).convert("RGBA")
-        dw = DIGIT_H * digit.width / digit.height
-        digit = digit.resize((round(dw * k), round(DIGIT_H * k)), Image.LANCZOS)
-        img.alpha_composite(digit, (round(x * k), round(DIGIT_TOP * k)))
-        x += dw + DIGIT_GAP
-    text(".%dkm" % (distance_m % 1000 // 100), x, bottom - 2, black(15), INK)
+    for g in digits:
+        dw = DIGIT_H * z * g.width / g.height
+        g = g.resize((round(dw * k), round(DIGIT_H * z * k)), Image.LANCZOS)
+        img.alpha_composite(g, (round(x * k), round((bottom - DIGIT_H * z) * k)))
+        x += dw + DIGIT_GAP * z
+    text(tail, x, bottom - 2 * z, black(15 * z), INK)
 
-    text("きょう", right, bottom - 20, bold(10), GRAY, "rs")
-    text("{:,}歩".format(today), right, bottom - 2, black(16), INK, "rs")
+    sx = SIDE
+    text("きょう", sx, bottom + 17, bold(10), GRAY)
+    sx += d.textlength("きょう", font=bold(10)) / k + 4
+    today_text = "{:,}歩".format(today)
+    text(today_text, sx, bottom + 17, black(13), INK)
+    sx += d.textlength(today_text, font=black(13)) / k + 7
+    if time and sx + d.textlength(time, font=bold(10)) / k <= SIDE + left_room:
+        text(time, sx, bottom + 17, bold(10), GRAY)
 
     band_top = BAND_TOP + max(0, h - BASE_H) * 0.5
     box = [BAND_SIDE * k, band_top * k, (w - BAND_SIDE) * k, (band_top + BAND_H) * k]
-    d.rounded_rectangle(box, radius=14 * k, fill=TEAL, outline=INK, width=round(2 * k))
+    d.rounded_rectangle(box, radius=14 * k, fill=ACCENT, outline=INK, width=round(2 * k))
     f = bold(14)
     if d.textlength(band, font=f) > (w - BAND_SIDE * 2 - 28) * k:
         f = bold(12)
@@ -69,14 +95,14 @@ def render(width, height, place, note, distance_m, today, band, src, dst, progre
 
     x0, x1, y = TRACK_SIDE, w - TRACK_SIDE, h - TRACK_UP
     xp = x0 + (x1 - x0) * progress
-    d.line([x0 * k, y * k, xp * k, y * k], fill=TEAL, width=round(6 * k))
+    d.line([x0 * k, y * k, xp * k, y * k], fill=ACCENT, width=round(6 * k))
     d.line([x0 * k, y * k, x1 * k, y * k], fill=INK, width=round(2 * k))
     r = 4 * k
     d.ellipse([x0 * k - r, y * k - r, x0 * k + r, y * k + r], fill=INK)
     d.ellipse([x1 * k - r, y * k - r, x1 * k + r, y * k + r], fill=WHITE, outline=INK, width=round(2 * k))
 
     text(dst, right, h - 8, bold(10.5), GRAY, "rs")
-    text(src, SIDE, h - 8, bold(10.5), GRAY)
+    text(name, SIDE, h - 8, bold(10.5), GRAY)
 
     yoko = Image.open(os.path.join(RES, "drawable-nodpi", "yoko_frame_%d.png" % frame)).convert("RGBA")
     size = round(YOKO_BOX * k)
@@ -94,14 +120,14 @@ def render(width, height, place, note, distance_m, today, band, src, dst, progre
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "preview.png"
     shots = [
-        render(250, 172, "沖縄県 那覇", "12:34", 541000, 6543, "シーサーをずらしています",
-               "那覇", "読谷まで あと11.5km", 0.47, 1),
-        render(250, 172, "沖縄県 与那国島", None, 0, 0, "タップして歩数の読み取りを許可",
-               "与那国島", "西表島まで あと84.4km", 0.0, 4),
-        render(250, 172, "岐阜県 白川郷", "2周目 8:05", 12987300, 12045, "合掌造りの屋根をずらしています",
-               "白川郷", "郡上まで あと19.9km", 0.65, 6),
-        render(315, 260, "静岡県 富士山", "18:20", 4945800, 8210, "富士山をずらしています",
-               "富士山", "甲府まで あと27.8km", 0.24, 8),
+        render(250, 172, "沖縄県", "那覇", 47, 541000, 6543, "12:34", "シーサーをずらしています",
+               "読谷まで あと11.5km", 0.47, 1),
+        render(250, 172, "沖縄県", "与那国島", 47, 0, 0, None, "タップして歩数の読み取りを許可",
+               "西表島まで あと84.4km", 0.0, 4),
+        render(250, 172, "岐阜県", "白川郷", 21, 12987300, 12045, "8:05", "合掌造りの屋根をずらしています",
+               "郡上まで あと19.9km", 0.65, 6),
+        render(315, 260, "静岡県", "富士山", 22, 4945800, 8210, "18:20", "富士山をずらしています",
+               "甲府まで あと27.8km", 0.24, 8),
     ]
     gap = 24 * PX
     sheet = Image.new("RGBA", (sum(s.width for s in shots) + gap * (len(shots) + 1),

@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad * 2, pad, pad);
 
-        TextView title = text("よこずらしの旅", 22, 0);
+        TextView title = text("よこめぐり", 22, 0);
         // 表示の確認用。長押しすると 30km 進む（「旅をやり直す」で消える）
         title.setOnLongClickListener(new View.OnLongClickListener() {
             @Override

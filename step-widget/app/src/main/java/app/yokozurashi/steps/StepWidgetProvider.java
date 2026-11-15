@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** よこずらしの旅のウィジェット。 */
+/** よこめぐりのウィジェット。 */
 public class StepWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "app.yokozurashi.steps.REFRESH";
     public static final String ACTION_DAY_TICK = "app.yokozurashi.steps.DAY_TICK";
@@ -79,12 +79,15 @@ public class StepWidgetProvider extends AppWidgetProvider {
         Journey j = Journey.at(StepStore.distanceM(context));
         Panel.Content t = new Panel.Content();
         t.place = j.pref + " " + j.place;
+        t.pref = j.pref;
+        t.prefCode = j.prefCode;
         t.distanceM = j.distanceM;
         t.today = StepStore.today(context);
         t.progress = j.progress;
         t.from = j.place;
         t.to = j.next + "まで あと" + Journey.km(j.toNextM) + "km";
-        t.note = note(context, j);
+        long read = StepStore.readTime(context);
+        t.time = read == 0 ? null : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
         if (status == StepReader.UNSUPPORTED) {
             t.band = "Android 14 以上が必要です";
         } else if (status == StepReader.NO_PERMISSION) {
@@ -123,13 +126,5 @@ public class StepWidgetProvider extends AppWidgetProvider {
 
     private static int clamp(int v, int lo, int hi) {
         return Math.max(lo, Math.min(Math.max(lo, hi), v));
-    }
-
-    /** 1行目の右に出す小さな文字。2周目からの周回と、最後に歩数を読めた時刻。 */
-    private static String note(Context context, Journey j) {
-        long read = StepStore.readTime(context);
-        String time = read == 0 ? "" : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
-        if (j.lap > 1) return (j.lap + "周目 " + time).trim();
-        return time.length() == 0 ? null : time;
     }
 }

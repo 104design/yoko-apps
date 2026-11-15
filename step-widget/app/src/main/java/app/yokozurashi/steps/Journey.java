@@ -7,6 +7,7 @@ public class Journey {
     public boolean goal;     // ゴール（最後の地点）に着いていて、次の周回を待っているところか
     public String place;     // その地点の地名
     public String pref;      // その地点の都道府県
+    public int prefCode;     // 都道府県の番号（1 北海道 〜 47 沖縄県）
     public String item;      // いまずらしているもの
     public String next;      // 次の地点の地名
     public long toNextM;     // 次の地点までの残り（m）
@@ -26,6 +27,7 @@ public class Journey {
         j.goal = i == last;
         j.place = Route.NAME[i];
         j.pref = Route.PREF[i];
+        j.prefCode = Route.PREF_CODE[i];
         j.item = Route.ITEM[i];
         // ゴールのあとは、少し進むと出発点に戻って次の周回が始まる
         long from = Route.AT_M[i];

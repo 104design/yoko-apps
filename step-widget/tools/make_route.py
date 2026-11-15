@@ -26,6 +26,9 @@ public class Route {
     /** その地点から次の地点まで、よこずらしがずらしていくもの。 */
     public static final String[] ITEM = {
 %s    };
+    /** 都道府県の番号（1 北海道 〜 47 沖縄県）。絵のファイル名 meibutsu_NN に使う。 */
+    public static final int[] PREF_CODE = {
+%s    };
     /** 出発点からその地点までの道のり（m）。 */
     public static final int[] AT_M = {
 %s    };
@@ -37,6 +40,11 @@ public class Route {
 '''
 
 REST_M = 20000
+
+PREFS = ("北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 "
+         "新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 "
+         "奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 "
+         "熊本県 大分県 宮崎県 鹿児島県 沖縄県").split()
 
 
 def distance_m(a, b):
@@ -53,8 +61,9 @@ def load():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            name, pref, lat, lon, item = line.split(",")
-            points.append((name, pref, float(lat), float(lon), item))
+            cols = line.split(",")
+            name, pref, lat, lon, item = cols[:5]
+            points.append((name, pref, float(lat), float(lon), item, len(cols) > 5 and cols[5] == "絵"))
     return points
 
 
@@ -75,6 +84,7 @@ def main():
             rows([p[0] for p in points], '"%s"', 6),
             rows([p[1] for p in points], '"%s"', 6),
             rows([p[4] for p in points], '"%s"', 4),
+            rows([PREFS.index(p[1]) + 1 for p in points], "%d", 16),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))
     for i, p in enumerate(points):
@@ -86,5 +96,18 @@ def main():
         sum(legs) / len(legs) / 1000, max(legs) / 1000, min(legs) / 1000))
 
 
+def pictures():
+    """絵にする名物の一覧（通る順）を、Markdown の表にして表示する。"""
+    seen = []
+    for p in load():
+        if p[5]:
+            seen.append("| %s | %s | `meibutsu_%02d.png` |" % (p[1], p[4], PREFS.index(p[1]) + 1))
+    print("| 都道府県 | 絵にする名物 | ファイル名 |\n| --- | --- | --- |\n" + "\n".join(seen))
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--pictures":
+        pictures()
+    else:
+        main()
