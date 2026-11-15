@@ -79,7 +79,7 @@ public class StepWidgetProvider extends AppWidgetProvider {
         int status = StepReader.status(context);
         Journey j = Journey.at(StepStore.distanceM(context));
         Panel.Content t = new Panel.Content();
-        t.place = j.pref + " " + j.place;
+        t.place = (j.goal ? "ゴール！ " : "") + j.pref + " " + j.place;
         t.pref = j.pref;
         t.picture = j.picture;
         t.prefPicture = j.prefPicture;
@@ -90,14 +90,13 @@ public class StepWidgetProvider extends AppWidgetProvider {
         t.to = j.next + "まで あと" + Journey.km(j.toNextM) + "km";
         long read = StepStore.readTime(context);
         t.time = read == 0 ? null : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
+        String bandText;
         if (status == StepReader.UNSUPPORTED) {
-            t.band = "Android 14 以上が必要です";
+            bandText = "Android 14 以上が必要です";
         } else if (status == StepReader.NO_PERMISSION) {
-            t.band = "タップして歩数の読み取りを許可";
-        } else if (j.goal) {
-            t.band = "ゴール！ " + j.item + "をずらしています";
+            bandText = "タップして歩数の読み取りを許可";
         } else {
-            t.band = j.item + "をずらしています";
+            bandText = j.text;
         }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_steps);
@@ -138,6 +137,10 @@ public class StepWidgetProvider extends AppWidgetProvider {
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         }
         views.setOnClickPendingIntent(R.id.tap_band, bandTap);
+
+        // 帯の中の文。入らない長さなら、右から左へ流れる
+        views.removeAllViews(R.id.band_text);
+        views.addView(R.id.band_text, Belt.of(context, bandText, lay.bandTextRoom()));
         return views;
     }
 

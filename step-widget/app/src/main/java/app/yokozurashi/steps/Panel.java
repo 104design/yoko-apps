@@ -12,7 +12,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 
 /**
- * ウィジェットの絵（地名、累計の距離、きょうの歩数、名物の絵、帯、道のりの線）を1枚の画像に描く。
+ * ウィジェットの絵（地名、累計の距離、きょうの歩数、名物の絵、帯の枠、道のりの線）を1枚の画像に描く。
  * ウィジェットの文字部品は独自フォントを使えないので、手描き数字と Zen Maru Gothic をここでまとめて描く。
  * 寸法は SPEC.md の「仕様書 1: 画面」。基準は 250×172dp で、単位は dp。
  * tools/preview.py が同じ配置で見本の画像を作る。配置を変えたら両方を直す。
@@ -39,6 +39,7 @@ public class Panel {
     private static final float PICTURE = 66;     // 名物の絵（正方形）
     private static final float PICTURE_TOP = 10, PICTURE_RIGHT = 14;
     private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
+    private static final float BAND_TEXT_SIDE = 12; // 帯の中の、文字の左右の余白
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
@@ -89,6 +90,11 @@ public class Panel {
         public float bandHeight() {
             return BAND_H * scale;
         }
+
+        /** 帯の中で、文字に使える幅（実寸のdp）。左右の余白は widget_steps.xml の band_text と同じにする。 */
+        public float bandTextRoom() {
+            return bandWidth() - BAND_TEXT_SIDE * 2;
+        }
     }
 
     /** 描く内容。 */
@@ -100,7 +106,6 @@ public class Panel {
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
         public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
-        public String band;    // 帯の文
         public String from;    // 線の左端の地名
         public String to;      // 線の右端の説明（「読谷まで あと12.3km」）
         public float progress; // 区間の進み具合
@@ -192,13 +197,7 @@ public class Panel {
         p.setStrokeWidth(2);
         p.setColor(INK);
         c.drawRoundRect(band, 14, 14, p);
-        TextPaint bandPaint = text(bold, 14, INK);
-        float bandRoom = band.width() - 28;
-        if (bandPaint.measureText(t.band) > bandRoom) bandPaint.setTextSize(12);
-        CharSequence bandText = TextUtils.ellipsize(t.band, bandPaint, bandRoom, TextUtils.TruncateAt.END);
-        Paint.FontMetrics fm = bandPaint.getFontMetrics();
-        c.drawText(bandText, 0, bandText.length(), band.left + 14,
-                band.centerY() - (fm.ascent + fm.descent) / 2, bandPaint);
+        // 帯の中の文は、ここでは描かない。流れる文字の部品（Belt）を上に重ねる
 
         // 道のりの線：左端がいまの地点、右端が次の地点。進んだぶんを太いアクセントカラーで塗る
         float x0 = TRACK_SIDE, x1 = lay.w - TRACK_SIDE, y = lay.trackY;

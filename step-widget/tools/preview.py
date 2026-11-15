@@ -91,10 +91,10 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     band_top = BAND_TOP + max(0, h - BASE_H) * 0.5
     box = [BAND_SIDE * k, band_top * k, (w - BAND_SIDE) * k, (band_top + BAND_H) * k]
     d.rounded_rectangle(box, radius=14 * k, fill=ACCENT, outline=INK, width=round(2 * k))
-    f = bold(14)
-    if d.textlength(band, font=f) > (w - BAND_SIDE * 2 - 28) * k:
-        f = bold(12)
-    d.text(((BAND_SIDE + 14) * k, (band_top + BAND_H / 2) * k), band, font=f, fill=INK, anchor="lm")
+    # 帯の文は端末の標準フォントで流れる。見本では、流れはじめの位置で帯の右端に切れた形にする
+    inner = Image.new("RGBA", (round((w - BAND_SIDE * 2 - 24) * k), round(BAND_H * k)), (0, 0, 0, 0))
+    ImageDraw.Draw(inner).text((0, inner.height / 2), band, font=bold(15), fill=INK, anchor="lm")
+    img.alpha_composite(inner, (round((BAND_SIDE + 12) * k), round(band_top * k)))
 
     x0, x1, y = TRACK_SIDE, w - TRACK_SIDE, h - TRACK_UP
     xp = x0 + (x1 - x0) * progress
@@ -123,13 +123,13 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "preview.png"
     shots = [
-        render(250, 172, "沖縄県", "那覇", "meibutsu_47_5", 541000, 6543, "12:34", "シーサーをずらしています",
+        render(250, 172, "沖縄県", "那覇", "meibutsu_47_5", 541000, 6543, "12:34", "オスのシーサーをメスのシーサーの所にずらしています",
                "読谷まで あと11.5km", 0.47, 1),
         render(250, 172, "沖縄県", "与那国島", "meibutsu_47_1", 0, 0, None, "タップして歩数の読み取りを許可",
                "西表島まで あと84.4km", 0.0, 4),
-        render(250, 172, "岐阜県", "白川郷", "meibutsu_21_2", 12987300, 12045, "8:05", "合掌造りの屋根をずらしています",
+        render(250, 172, "岐阜県", "白川郷", "meibutsu_21_2", 12987300, 12045, "8:05", "ずれた合掌造りの屋根を元の位置にずらしています",
                "郡上まで あと19.9km", 0.65, 6),
-        render(315, 260, "静岡県", "富士山", "meibutsu_22_3", 4945800, 8210, "18:20", "富士山をずらしています",
+        render(315, 260, "静岡県", "富士山", "meibutsu_22_3", 4945800, 8210, "18:20", "富士山にかかる雲を横のほうにずらしています",
                "甲府まで あと27.8km", 0.24, 8),
     ]
     gap = 24 * PX

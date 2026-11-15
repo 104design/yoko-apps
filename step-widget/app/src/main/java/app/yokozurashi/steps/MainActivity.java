@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
         Journey j = Journey.at(StepStore.distanceM(this));
         StringBuilder s = new StringBuilder();
         s.append(j.pref).append(" ").append(j.place).append(j.lap > 1 ? "（" + j.lap + "周目）" : "").append("\n");
-        s.append(j.item).append("をずらしています\n");
+        s.append(j.text).append("\n");
         s.append(j.next).append("まで あと").append(Journey.km(j.toNextM)).append("km\n\n");
         s.append("累計 ").append(Journey.km(j.distanceM)).append("km（")
                 .append(String.format("%,d", total)).append("歩）\n");

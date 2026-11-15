@@ -30,7 +30,7 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <!-- 帯のタップを受ける枠。位置と大きさは、外の枠の余白（padding）で帯に合わせる -->
+    <!-- 帯のタップを受ける枠と、帯の中の文。位置と大きさは、外の枠の余白（padding）で帯に合わせる -->
     <FrameLayout
         android:id="@+id/band_box"
         android:layout_width="match_parent"
@@ -38,7 +38,17 @@
         <FrameLayout
             android:id="@+id/tap_band"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent">
+            <!-- 帯の中の文。中身は Belt が入れる。左右の余白は Panel.BAND_TEXT_SIDE と同じにする -->
+            <FrameLayout
+                android:id="@+id/band_text"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="2dp" />
+        </FrameLayout>
     </FrameLayout>
 
     <!-- よこずらし。位置と大きさは、この枠の余白（padding）で決める。StepWidgetProvider が入れる -->
