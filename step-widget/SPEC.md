@@ -26,27 +26,29 @@
 
 | 要素 | 位置と大きさ（dp） | 見た目 |
 | --- | --- | --- |
-| いまの場所 | 左16・上の行 | 「沖縄県 那覇」の形、13sp太字、アクセントの濃い色 |
+| いまの場所 | 左16・上の行 | 地点の名前だけ（「那覇」）、13sp太字、アクセントの濃い色。都道府県の名前は、右上の絵の下に出す |
 | 累計の距離 | 左16・上31。数字の高さ32 | kmの整数部は手描き数字（タイマーと同じ素材。4と5は黒塗り）。小数1桁と「km」は15spのフォント。絵の左に入らない桁数になったら全体を縮める |
 | きょうの歩数 | 距離の下の行 | 「きょう」10sp灰、「6,543歩」13sp、その右に最後に歩数を読めた時刻「12:34」10sp灰 |
-| 右上の絵 | 右14・上10、66×66 | いまの地点の名物の絵。なければ、いまいる都道府県の形の絵。どちらもなければ、薄い丸に都道府県の名前 |
+| 右上の絵 | 右20・上9、50×50。その下に都道府県の名前 | いまの地点の名物の絵。なければ、いまいる都道府県の標章。どちらもなければ薄い丸。絵の下には、いつも都道府県の名前（10.5sp太字、アクセントの濃い色、絵のまん中にそろえる）を添える。標章と名前をいっしょに覚えられるようにするため |
 | 帯 | 左右10・上88、高さ30 | 塗りアクセント、枠線2 墨、角丸14。文は15sp・墨・1行。帯に入る文はそのまま出し、入らない文は右から左へ流す（毎秒40dp、止まらず繰り返す）。文字の左右の余白12 |
 | 道のりの線 | 左右26、下端から26 | 左端の黒丸がいまの地点、右端の白丸が次の地点。進んだぶんを太いアクセントで塗る |
 | よこずらし | 線の上、進んだ割合の位置。枠60×60（本体は高さ約25） | 9コマの横のびアニメ。足元が線に乗る |
-| 線の下の文字 | 下端 | 左に地点の名前、右に「読谷まで あと11.5km」。10.5sp灰 |
+| 線の下の文字 | 下端 | 左に地点の名前、右に「読谷まで あと11.5km」。船で渡る区間は「船で宮古島まで あと3.2km」。10.5sp灰 |
 
 文字のフォントは Zen Maru Gothic。ウィジェットの文字部品は独自フォントを使えないため、帯の文とよこずらし以外は1枚の画像として描く（`Panel`）。その上に、流れる文（`Belt`）とよこずらしのコマ送りの部品を重ねる。帯の文だけは、流すために文字部品を使うので、端末の標準フォントになる（よこずらしニュースと同じ）。何周目かはウィジェットには出さず、アプリの画面に出す。
 
 ### 右上の絵
 
-絵は2段になっている。下の段が都道府県の形の絵、上の段が名物の絵。まず都道府県の形の絵を47枚用意し、名物の絵は余裕が出たら地点ごとに足していく。
+絵は2段になっている。下の段が都道府県の絵、上の段が名物の絵。都道府県の絵は47枚そろっていて、名物の絵は余裕が出たら地点ごとに足していく。
+
+都道府県の絵には、都道府県の標章（県章）を使っている（0.9）。依頼者が見つけた一覧の画像 `assets/pref_marks.png` から、`tools/make_pref_marks.py` で1つずつ切り出した。白地を透明にして墨の色にしただけで、形には手を加えていない。一覧の1マスは150pxほどなので、大きく出すと輪郭が少しぼやける。標章は各都道府県が使い方の決まりを持っているので、アプリをほかの人に配るときは決まりを確かめる（いまは依頼者の端末だけで使う）。
 
 | 段 | 中身 | ファイル名 | 出るとき |
 | --- | --- | --- | --- |
-| 下 | 都道府県の形（沖縄県なら沖縄の地図の形） | `pref_NN.png` | その都道府県にいるあいだ。ただし、いまの地点に名物の絵があればそちらが出る |
+| 下 | 都道府県の標章（県章） | `pref_NN.png` | その都道府県にいるあいだ。ただし、いまの地点に名物の絵があればそちらが出る |
 | 上 | その地点の名物 | `meibutsu_NN_M.png` | その地点にいるあいだ（その地点に着いてから、次の地点に着くまで） |
 
-出す絵は、名物の絵 → 都道府県の形の絵 → 仮の丸（薄い丸に都道府県の名前）の順に、あるものを選ぶ。47枚だけのあいだは都道府県の形が出て、あとから名物の絵を置くと、その地点でだけ名物に替わる。
+出す絵は、名物の絵 → 都道府県の絵 → 仮の丸（薄い丸）の順に、あるものを選ぶ。どの場合も、絵の下に都道府県の名前を添える。47枚だけのあいだは都道府県の形が出て、あとから名物の絵を置くと、その地点でだけ名物に替わる。
 
 - NN は都道府県の番号（01 北海道〜47 沖縄県）、M は `tools/route.csv` の「絵の番号」
 - 背景が透明のPNG。正方形で、600×600px前後。余白は詰める（枠いっぱいに出る）
@@ -59,148 +61,379 @@
 | --- | --- | --- | --- | --- |
 | 沖縄県 | 与那国島 | ヨナグニウマ | `pref_47.png` | `meibutsu_47_1.png` |
 | 沖縄県 | 西表島 | イリオモテヤマネコ | `pref_47.png` | `meibutsu_47_2.png` |
+| 沖縄県 | 竹富島 | 水牛車 | `pref_47.png` | `meibutsu_47_8.png` |
 | 沖縄県 | 石垣島 | 星の砂 | `pref_47.png` | `meibutsu_47_3.png` |
+| 沖縄県 | 多良間島 | ヤギ | `pref_47.png` | `meibutsu_47_9.png` |
 | 沖縄県 | 宮古島 | 宮古そば | `pref_47.png` | `meibutsu_47_4.png` |
+| 沖縄県 | 久米島 | 車えび | `pref_47.png` | `meibutsu_47_10.png` |
+| 沖縄県 | 渡嘉敷島 | クマノミ | `pref_47.png` | `meibutsu_47_11.png` |
 | 沖縄県 | 那覇 | シーサー | `pref_47.png` | `meibutsu_47_5.png` |
 | 沖縄県 | 読谷 | 紅いも | `pref_47.png` | `meibutsu_47_6.png` |
+| 沖縄県 | 恩納 | サンゴ | `pref_47.png` | `meibutsu_47_12.png` |
 | 沖縄県 | 本部 | ジンベエザメ | `pref_47.png` | `meibutsu_47_7.png` |
+| 沖縄県 | 大宜味 | シークヮーサー | `pref_47.png` | `meibutsu_47_13.png` |
+| 沖縄県 | 辺戸岬 | ヤンバルクイナ | `pref_47.png` | `meibutsu_47_14.png` |
 | 鹿児島県 | 与論島 | 百合ヶ浜の砂 | `pref_46.png` | `meibutsu_46_1.png` |
+| 鹿児島県 | 沖永良部島 | えらぶゆり | `pref_46.png` | `meibutsu_46_8.png` |
 | 鹿児島県 | 徳之島 | 闘牛 | `pref_46.png` | `meibutsu_46_2.png` |
+| 鹿児島県 | 瀬戸内 | クロマグロ | `pref_46.png` | `meibutsu_46_9.png` |
 | 鹿児島県 | 奄美大島 | 黒糖 | `pref_46.png` | `meibutsu_46_3.png` |
+| 鹿児島県 | 龍郷 | 大島紬 | `pref_46.png` | `meibutsu_46_10.png` |
+| 鹿児島県 | 宝島 | トカラ馬 | `pref_46.png` | `meibutsu_46_11.png` |
+| 鹿児島県 | 中之島 | 天文台 | `pref_46.png` | `meibutsu_46_12.png` |
 | 鹿児島県 | 屋久島 | 縄文杉 | `pref_46.png` | `meibutsu_46_4.png` |
 | 鹿児島県 | 種子島 | ロケット | `pref_46.png` | `meibutsu_46_5.png` |
+| 鹿児島県 | 佐多岬 | 佐多岬灯台 | `pref_46.png` | `meibutsu_46_13.png` |
 | 鹿児島県 | 指宿 | 砂むしの砂 | `pref_46.png` | `meibutsu_46_6.png` |
+| 鹿児島県 | 知覧 | 知覧茶 | `pref_46.png` | `meibutsu_46_14.png` |
 | 鹿児島県 | 鹿児島 | 桜島大根 | `pref_46.png` | `meibutsu_46_7.png` |
+| 鹿児島県 | 霧島 | 黒豚 | `pref_46.png` | `meibutsu_46_15.png` |
 | 宮崎県 | 都城 | 地鶏の炭火焼き | `pref_45.png` | `meibutsu_45_1.png` |
 | 宮崎県 | 日南 | カツオ | `pref_45.png` | `meibutsu_45_2.png` |
 | 宮崎県 | 宮崎 | マンゴー | `pref_45.png` | `meibutsu_45_3.png` |
+| 宮崎県 | 西都 | 西都原古墳 | `pref_45.png` | `meibutsu_45_5.png` |
+| 宮崎県 | 都農 | きんかん | `pref_45.png` | `meibutsu_45_6.png` |
+| 宮崎県 | 日向 | はまぐり碁石 | `pref_45.png` | `meibutsu_45_7.png` |
+| 宮崎県 | 延岡 | チキン南蛮 | `pref_45.png` | `meibutsu_45_8.png` |
+| 宮崎県 | 日之影 | 竹細工 | `pref_45.png` | `meibutsu_45_9.png` |
 | 宮崎県 | 高千穂 | 神楽のお面 | `pref_45.png` | `meibutsu_45_4.png` |
 | 熊本県 | 阿蘇 | あか牛 | `pref_43.png` | `meibutsu_43_1.png` |
+| 熊本県 | 大津 | いきなり団子 | `pref_43.png` | `meibutsu_43_4.png` |
 | 熊本県 | 熊本 | 辛子れんこん | `pref_43.png` | `meibutsu_43_2.png` |
+| 熊本県 | 宇土 | 海苔 | `pref_43.png` | `meibutsu_43_5.png` |
+| 熊本県 | 三角 | デコポン | `pref_43.png` | `meibutsu_43_6.png` |
 | 熊本県 | 天草 | イルカ | `pref_43.png` | `meibutsu_43_3.png` |
 | 長崎県 | 島原 | 具雑煮 | `pref_42.png` | `meibutsu_42_1.png` |
+| 長崎県 | 諫早 | 眼鏡橋 | `pref_42.png` | `meibutsu_42_4.png` |
 | 長崎県 | 長崎 | カステラ | `pref_42.png` | `meibutsu_42_2.png` |
+| 長崎県 | 大村 | 大村寿司 | `pref_42.png` | `meibutsu_42_5.png` |
+| 長崎県 | 川棚 | クジャク | `pref_42.png` | `meibutsu_42_6.png` |
 | 長崎県 | 佐世保 | ハンバーガー | `pref_42.png` | `meibutsu_42_3.png` |
-| 佐賀県 | 有田 | 焼きものの皿 | `pref_41.png` | `meibutsu_41_1.png` |
+| 佐賀県 | 有田 | 有田焼 | `pref_41.png` | `meibutsu_41_1.png` |
+| 佐賀県 | 伊万里 | 伊万里梨 | `pref_41.png` | `meibutsu_41_4.png` |
 | 佐賀県 | 呼子 | イカ | `pref_41.png` | `meibutsu_41_2.png` |
+| 佐賀県 | 唐津 | 虹の松原 | `pref_41.png` | `meibutsu_41_5.png` |
+| 佐賀県 | 小城 | 小城ようかん | `pref_41.png` | `meibutsu_41_6.png` |
 | 佐賀県 | 佐賀 | 熱気球 | `pref_41.png` | `meibutsu_41_3.png` |
+| 福岡県 | 久留米 | 久留米ラーメン | `pref_40.png` | `meibutsu_40_4.png` |
 | 福岡県 | 太宰府 | 梅ヶ枝餅 | `pref_40.png` | `meibutsu_40_1.png` |
 | 福岡県 | 福岡 | 明太子 | `pref_40.png` | `meibutsu_40_2.png` |
+| 福岡県 | 福津 | 光の道 | `pref_40.png` | `meibutsu_40_5.png` |
+| 福岡県 | 直方 | 炭坑節 | `pref_40.png` | `meibutsu_40_6.png` |
+| 福岡県 | 小倉 | 小倉織 | `pref_40.png` | `meibutsu_40_7.png` |
 | 福岡県 | 門司 | 焼きカレー | `pref_40.png` | `meibutsu_40_3.png` |
+| 福岡県 | 行橋 | いちじく | `pref_40.png` | `meibutsu_40_8.png` |
 | 大分県 | 中津 | からあげ | `pref_44.png` | `meibutsu_44_1.png` |
+| 大分県 | 宇佐 | 麦焼酎 | `pref_44.png` | `meibutsu_44_5.png` |
+| 大分県 | 日出 | 城下かれい | `pref_44.png` | `meibutsu_44_6.png` |
 | 大分県 | 別府 | 温泉の湯けむり | `pref_44.png` | `meibutsu_44_2.png` |
 | 大分県 | 大分 | とり天 | `pref_44.png` | `meibutsu_44_3.png` |
 | 大分県 | 佐賀関 | 関さば | `pref_44.png` | `meibutsu_44_4.png` |
+| 愛媛県 | 佐田岬 | しらす | `pref_38.png` | `meibutsu_38_5.png` |
+| 愛媛県 | 瀬戸 | 風車 | `pref_38.png` | `meibutsu_38_6.png` |
 | 愛媛県 | 八幡浜 | みかん | `pref_38.png` | `meibutsu_38_1.png` |
 | 愛媛県 | 宇和島 | じゃこ天 | `pref_38.png` | `meibutsu_38_2.png` |
+| 愛媛県 | 愛南 | 真珠 | `pref_38.png` | `meibutsu_38_7.png` |
+| 高知県 | 宿毛 | だるま夕日 | `pref_39.png` | `meibutsu_39_4.png` |
 | 高知県 | 四万十 | 沈下橋 | `pref_39.png` | `meibutsu_39_1.png` |
+| 高知県 | 黒潮 | 天日塩 | `pref_39.png` | `meibutsu_39_5.png` |
+| 高知県 | 窪川 | 仁井田米 | `pref_39.png` | `meibutsu_39_6.png` |
+| 高知県 | 須崎 | 鍋焼きラーメン | `pref_39.png` | `meibutsu_39_7.png` |
 | 高知県 | 高知 | カツオのたたき | `pref_39.png` | `meibutsu_39_2.png` |
+| 高知県 | 香南 | ニラ | `pref_39.png` | `meibutsu_39_8.png` |
+| 高知県 | 安芸 | なす | `pref_39.png` | `meibutsu_39_9.png` |
 | 高知県 | 室戸 | クジラ | `pref_39.png` | `meibutsu_39_3.png` |
+| 徳島県 | 海陽 | サーフボード | `pref_36.png` | `meibutsu_36_3.png` |
+| 徳島県 | 美波 | ウミガメ | `pref_36.png` | `meibutsu_36_4.png` |
+| 徳島県 | 阿南 | たけのこ | `pref_36.png` | `meibutsu_36_5.png` |
 | 徳島県 | 徳島 | すだち | `pref_36.png` | `meibutsu_36_1.png` |
 | 徳島県 | 鳴門 | うずしお | `pref_36.png` | `meibutsu_36_2.png` |
+| 香川県 | 東かがわ | 和三盆 | `pref_37.png` | `meibutsu_37_3.png` |
+| 香川県 | さぬき | 桐下駄 | `pref_37.png` | `meibutsu_37_4.png` |
 | 香川県 | 高松 | うどん | `pref_37.png` | `meibutsu_37_1.png` |
 | 香川県 | 丸亀 | うちわ | `pref_37.png` | `meibutsu_37_2.png` |
+| 香川県 | 観音寺 | 銭形砂絵 | `pref_37.png` | `meibutsu_37_5.png` |
+| 愛媛県 | 四国中央 | 水引 | `pref_38.png` | `meibutsu_38_8.png` |
+| 愛媛県 | 新居浜 | 太鼓台 | `pref_38.png` | `meibutsu_38_9.png` |
+| 愛媛県 | 西条 | うちぬきの水 | `pref_38.png` | `meibutsu_38_10.png` |
 | 愛媛県 | 松山 | 道後温泉の湯 | `pref_38.png` | `meibutsu_38_3.png` |
 | 愛媛県 | 今治 | タオル | `pref_38.png` | `meibutsu_38_4.png` |
+| 愛媛県 | 大三島 | 自転車 | `pref_38.png` | `meibutsu_38_11.png` |
+| 広島県 | 生口島 | レモン | `pref_34.png` | `meibutsu_34_4.png` |
 | 広島県 | 尾道 | 尾道ラーメン | `pref_34.png` | `meibutsu_34_1.png` |
+| 広島県 | 三原 | タコ | `pref_34.png` | `meibutsu_34_5.png` |
+| 広島県 | 竹原 | 竹灯り | `pref_34.png` | `meibutsu_34_6.png` |
+| 広島県 | 東広島 | 日本酒 | `pref_34.png` | `meibutsu_34_7.png` |
 | 広島県 | 広島 | もみじまんじゅう | `pref_34.png` | `meibutsu_34_2.png` |
 | 広島県 | 宮島 | しゃもじ | `pref_34.png` | `meibutsu_34_3.png` |
 | 山口県 | 岩国 | 錦帯橋 | `pref_35.png` | `meibutsu_35_1.png` |
+| 山口県 | 柳井 | 金魚ちょうちん | `pref_35.png` | `meibutsu_35_5.png` |
+| 山口県 | 周南 | ナベヅル | `pref_35.png` | `meibutsu_35_6.png` |
+| 山口県 | 防府 | 外郎 | `pref_35.png` | `meibutsu_35_7.png` |
+| 山口県 | 山口 | 瑠璃光寺五重塔 | `pref_35.png` | `meibutsu_35_8.png` |
 | 山口県 | 秋吉台 | 鍾乳石 | `pref_35.png` | `meibutsu_35_2.png` |
+| 山口県 | 山陽小野田 | かまぼこ | `pref_35.png` | `meibutsu_35_9.png` |
 | 山口県 | 下関 | ふぐ | `pref_35.png` | `meibutsu_35_3.png` |
+| 山口県 | 川棚温泉 | 瓦そば | `pref_35.png` | `meibutsu_35_10.png` |
+| 山口県 | 長門 | 焼き鳥 | `pref_35.png` | `meibutsu_35_11.png` |
 | 山口県 | 萩 | 夏みかん | `pref_35.png` | `meibutsu_35_4.png` |
 | 島根県 | 津和野 | 鯉 | `pref_32.png` | `meibutsu_32_1.png` |
+| 島根県 | 益田 | 鮎 | `pref_32.png` | `meibutsu_32_4.png` |
+| 島根県 | 浜田 | のどぐろ | `pref_32.png` | `meibutsu_32_5.png` |
+| 島根県 | 江津 | 石州瓦 | `pref_32.png` | `meibutsu_32_6.png` |
+| 島根県 | 大田 | 石見銀山 | `pref_32.png` | `meibutsu_32_7.png` |
 | 島根県 | 出雲 | しめ縄 | `pref_32.png` | `meibutsu_32_2.png` |
 | 島根県 | 松江 | しじみ | `pref_32.png` | `meibutsu_32_3.png` |
 | 鳥取県 | 境港 | カニ | `pref_31.png` | `meibutsu_31_1.png` |
+| 鳥取県 | 米子 | 白ねぎ | `pref_31.png` | `meibutsu_31_4.png` |
 | 鳥取県 | 大山 | 大山そば | `pref_31.png` | `meibutsu_31_2.png` |
+| 鳥取県 | 北栄 | スイカ | `pref_31.png` | `meibutsu_31_5.png` |
+| 鳥取県 | 青谷 | あごちくわ | `pref_31.png` | `meibutsu_31_6.png` |
 | 鳥取県 | 鳥取 | 砂丘の砂 | `pref_31.png` | `meibutsu_31_3.png` |
+| 鳥取県 | 智頭 | 杉玉 | `pref_31.png` | `meibutsu_31_7.png` |
 | 岡山県 | 津山 | ホルモンうどん | `pref_33.png` | `meibutsu_33_1.png` |
+| 岡山県 | 久米南 | たまごかけごはん | `pref_33.png` | `meibutsu_33_4.png` |
+| 岡山県 | 吉備津 | 桃 | `pref_33.png` | `meibutsu_33_5.png` |
 | 岡山県 | 倉敷 | デニム | `pref_33.png` | `meibutsu_33_2.png` |
 | 岡山県 | 岡山 | きびだんご | `pref_33.png` | `meibutsu_33_3.png` |
+| 岡山県 | 備前 | 備前焼 | `pref_33.png` | `meibutsu_33_6.png` |
+| 兵庫県 | 赤穂 | 赤穂の塩 | `pref_28.png` | `meibutsu_28_4.png` |
+| 兵庫県 | たつの | そうめん | `pref_28.png` | `meibutsu_28_5.png` |
 | 兵庫県 | 姫路 | 姫路おでん | `pref_28.png` | `meibutsu_28_1.png` |
+| 兵庫県 | 加古川 | かつめし | `pref_28.png` | `meibutsu_28_6.png` |
+| 兵庫県 | 明石 | 明石焼き | `pref_28.png` | `meibutsu_28_7.png` |
 | 兵庫県 | 淡路島 | 玉ねぎ | `pref_28.png` | `meibutsu_28_2.png` |
 | 兵庫県 | 神戸 | 豚まん | `pref_28.png` | `meibutsu_28_3.png` |
+| 兵庫県 | 西宮 | 甲子園の土 | `pref_28.png` | `meibutsu_28_8.png` |
 | 大阪府 | 大阪 | たこ焼き | `pref_27.png` | `meibutsu_27_1.png` |
+| 大阪府 | 堺 | 包丁 | `pref_27.png` | `meibutsu_27_2.png` |
+| 大阪府 | 岸和田 | だんじり | `pref_27.png` | `meibutsu_27_3.png` |
 | 和歌山県 | 和歌山 | 梅干し | `pref_30.png` | `meibutsu_30_1.png` |
+| 和歌山県 | 湯浅 | 金山寺味噌 | `pref_30.png` | `meibutsu_30_4.png` |
+| 和歌山県 | 御坊 | スターチス | `pref_30.png` | `meibutsu_30_5.png` |
+| 和歌山県 | みなべ | 梅の花 | `pref_30.png` | `meibutsu_30_6.png` |
 | 和歌山県 | 白浜 | パンダ | `pref_30.png` | `meibutsu_30_2.png` |
+| 和歌山県 | すさみ | イノブタ | `pref_30.png` | `meibutsu_30_7.png` |
+| 和歌山県 | 串本 | 橋杭岩 | `pref_30.png` | `meibutsu_30_8.png` |
 | 和歌山県 | 那智勝浦 | マグロ | `pref_30.png` | `meibutsu_30_3.png` |
+| 三重県 | 熊野 | めはり寿司 | `pref_24.png` | `meibutsu_24_2.png` |
+| 三重県 | 尾鷲 | 尾鷲ひのき | `pref_24.png` | `meibutsu_24_3.png` |
+| 三重県 | 紀北 | 干物 | `pref_24.png` | `meibutsu_24_4.png` |
+| 三重県 | 大台 | しいたけ | `pref_24.png` | `meibutsu_24_5.png` |
 | 三重県 | 伊勢 | 伊勢えび | `pref_24.png` | `meibutsu_24_1.png` |
+| 三重県 | 松阪 | 松阪牛 | `pref_24.png` | `meibutsu_24_6.png` |
+| 三重県 | 津 | 天むす | `pref_24.png` | `meibutsu_24_7.png` |
+| 三重県 | 伊賀 | 忍者 | `pref_24.png` | `meibutsu_24_8.png` |
 | 奈良県 | 奈良 | 鹿せんべい | `pref_29.png` | `meibutsu_29_1.png` |
-| 京都府 | 京都 | 八ツ橋 | `pref_26.png` | `meibutsu_26_1.png` |
+| 京都府 | 宇治 | 抹茶 | `pref_26.png` | `meibutsu_26_2.png` |
+| 京都府 | 京都 | 生八ツ橋 | `pref_26.png` | `meibutsu_26_1.png` |
+| 滋賀県 | 近江八幡 | 赤こんにゃく | `pref_25.png` | `meibutsu_25_2.png` |
 | 滋賀県 | 彦根 | 琵琶湖 | `pref_25.png` | `meibutsu_25_1.png` |
+| 滋賀県 | 長浜 | ガラス細工 | `pref_25.png` | `meibutsu_25_3.png` |
+| 滋賀県 | 余呉 | ワカサギ | `pref_25.png` | `meibutsu_25_4.png` |
 | 福井県 | 敦賀 | 昆布 | `pref_18.png` | `meibutsu_18_1.png` |
+| 福井県 | 南越前 | 越前そば | `pref_18.png` | `meibutsu_18_4.png` |
 | 福井県 | 鯖江 | めがね | `pref_18.png` | `meibutsu_18_2.png` |
+| 福井県 | 福井 | 羽二重餅 | `pref_18.png` | `meibutsu_18_5.png` |
 | 福井県 | 勝山 | 恐竜の化石 | `pref_18.png` | `meibutsu_18_3.png` |
+| 石川県 | 加賀 | 温泉まんじゅう | `pref_17.png` | `meibutsu_17_3.png` |
+| 石川県 | 小松 | 九谷焼 | `pref_17.png` | `meibutsu_17_4.png` |
 | 石川県 | 金沢 | 金箔 | `pref_17.png` | `meibutsu_17_1.png` |
+| 石川県 | かほく | 長いも | `pref_17.png` | `meibutsu_17_5.png` |
+| 石川県 | 羽咋 | UFO | `pref_17.png` | `meibutsu_17_6.png` |
+| 石川県 | 志賀 | ころ柿 | `pref_17.png` | `meibutsu_17_7.png` |
+| 石川県 | 門前 | 能登ヒバ | `pref_17.png` | `meibutsu_17_8.png` |
 | 石川県 | 輪島 | 漆のお椀 | `pref_17.png` | `meibutsu_17_2.png` |
+| 石川県 | 穴水 | 能登ワイン | `pref_17.png` | `meibutsu_17_9.png` |
+| 石川県 | 七尾 | 温泉たまご | `pref_17.png` | `meibutsu_17_10.png` |
 | 富山県 | 氷見 | 寒ブリ | `pref_16.png` | `meibutsu_16_1.png` |
-| 富山県 | 富山 | ますのすし | `pref_16.png` | `meibutsu_16_2.png` |
+| 富山県 | 高岡 | 高岡銅器 | `pref_16.png` | `meibutsu_16_4.png` |
+| 富山県 | 富山 | ます寿司 | `pref_16.png` | `meibutsu_16_2.png` |
+| 富山県 | 滑川 | ホタルイカ | `pref_16.png` | `meibutsu_16_5.png` |
 | 富山県 | 立山 | 雪の壁 | `pref_16.png` | `meibutsu_16_3.png` |
+| 岐阜県 | 奥飛騨 | 露天風呂 | `pref_21.png` | `meibutsu_21_5.png` |
 | 岐阜県 | 高山 | さるぼぼ | `pref_21.png` | `meibutsu_21_1.png` |
 | 岐阜県 | 白川郷 | 合掌造りの屋根 | `pref_21.png` | `meibutsu_21_2.png` |
+| 岐阜県 | 荘川 | 荘川桜 | `pref_21.png` | `meibutsu_21_6.png` |
+| 岐阜県 | 白鳥 | 白鳥おどりの下駄 | `pref_21.png` | `meibutsu_21_7.png` |
 | 岐阜県 | 郡上 | 食品サンプル | `pref_21.png` | `meibutsu_21_3.png` |
+| 岐阜県 | 美濃 | 美濃和紙 | `pref_21.png` | `meibutsu_21_8.png` |
 | 岐阜県 | 岐阜 | 鵜飼の鵜 | `pref_21.png` | `meibutsu_21_4.png` |
+| 愛知県 | 一宮 | モーニング | `pref_23.png` | `meibutsu_23_3.png` |
 | 愛知県 | 名古屋 | しゃちほこ | `pref_23.png` | `meibutsu_23_1.png` |
+| 愛知県 | 有松 | 有松絞り | `pref_23.png` | `meibutsu_23_4.png` |
 | 愛知県 | 岡崎 | 八丁味噌 | `pref_23.png` | `meibutsu_23_2.png` |
+| 愛知県 | 豊川 | いなり寿司 | `pref_23.png` | `meibutsu_23_5.png` |
+| 静岡県 | 湖西 | 新居関所 | `pref_22.png` | `meibutsu_22_4.png` |
 | 静岡県 | 浜松 | うなぎ | `pref_22.png` | `meibutsu_22_1.png` |
+| 静岡県 | 掛川 | 葛湯 | `pref_22.png` | `meibutsu_22_5.png` |
+| 静岡県 | 島田 | SL | `pref_22.png` | `meibutsu_22_6.png` |
+| 静岡県 | 焼津 | かつお節 | `pref_22.png` | `meibutsu_22_7.png` |
 | 静岡県 | 静岡 | お茶 | `pref_22.png` | `meibutsu_22_2.png` |
+| 静岡県 | 由比 | 桜えび | `pref_22.png` | `meibutsu_22_8.png` |
+| 静岡県 | 富士宮 | 富士宮やきそば | `pref_22.png` | `meibutsu_22_9.png` |
 | 静岡県 | 富士山 | 富士山 | `pref_22.png` | `meibutsu_22_3.png` |
+| 山梨県 | 河口湖 | ほうとう | `pref_19.png` | `meibutsu_19_2.png` |
 | 山梨県 | 甲府 | ぶどう | `pref_19.png` | `meibutsu_19_1.png` |
+| 山梨県 | 北杜 | ソフトクリーム | `pref_19.png` | `meibutsu_19_3.png` |
 | 長野県 | 諏訪 | 御柱 | `pref_20.png` | `meibutsu_20_1.png` |
 | 長野県 | 松本 | わさび | `pref_20.png` | `meibutsu_20_2.png` |
+| 長野県 | 姨捨 | 棚田の月 | `pref_20.png` | `meibutsu_20_5.png` |
 | 長野県 | 長野 | おやき | `pref_20.png` | `meibutsu_20_3.png` |
+| 長野県 | 小布施 | 小布施の栗 | `pref_20.png` | `meibutsu_20_6.png` |
 | 群馬県 | 草津 | 湯もみの板 | `pref_10.png` | `meibutsu_10_1.png` |
+| 群馬県 | 嬬恋 | キャベツ | `pref_10.png` | `meibutsu_10_3.png` |
 | 長野県 | 軽井沢 | ジャム | `pref_20.png` | `meibutsu_20_4.png` |
+| 群馬県 | 横川 | 釜めし | `pref_10.png` | `meibutsu_10_4.png` |
+| 群馬県 | 富岡 | 生糸 | `pref_10.png` | `meibutsu_10_5.png` |
 | 群馬県 | 高崎 | だるま | `pref_10.png` | `meibutsu_10_2.png` |
+| 埼玉県 | 長瀞 | 天然氷のかき氷 | `pref_11.png` | `meibutsu_11_3.png` |
 | 埼玉県 | 秩父 | わらじカツ | `pref_11.png` | `meibutsu_11_1.png` |
+| 埼玉県 | 日高 | 曼珠沙華 | `pref_11.png` | `meibutsu_11_4.png` |
 | 埼玉県 | 川越 | さつまいも | `pref_11.png` | `meibutsu_11_2.png` |
+| 埼玉県 | 大宮 | 盆栽 | `pref_11.png` | `meibutsu_11_5.png` |
+| 埼玉県 | 草加 | 草加せんべい | `pref_11.png` | `meibutsu_11_6.png` |
 | 東京都 | 東京 | 雷おこし | `pref_13.png` | `meibutsu_13_1.png` |
+| 神奈川県 | 川崎 | 久寿餅 | `pref_14.png` | `meibutsu_14_3.png` |
 | 神奈川県 | 横浜 | シウマイ | `pref_14.png` | `meibutsu_14_1.png` |
 | 神奈川県 | 鎌倉 | 大仏 | `pref_14.png` | `meibutsu_14_2.png` |
+| 神奈川県 | 横須賀 | 海軍カレー | `pref_14.png` | `meibutsu_14_4.png` |
+| 千葉県 | 鋸南 | 地獄のぞき | `pref_12.png` | `meibutsu_12_4.png` |
 | 千葉県 | 館山 | びわ | `pref_12.png` | `meibutsu_12_1.png` |
+| 千葉県 | 鴨川 | おらが丼 | `pref_12.png` | `meibutsu_12_5.png` |
+| 千葉県 | 勝浦 | 勝浦タンタンメン | `pref_12.png` | `meibutsu_12_6.png` |
+| 千葉県 | いすみ | 菜の花 | `pref_12.png` | `meibutsu_12_7.png` |
+| 千葉県 | 九十九里 | いわし | `pref_12.png` | `meibutsu_12_8.png` |
+| 千葉県 | 八街 | 落花生 | `pref_12.png` | `meibutsu_12_9.png` |
 | 千葉県 | 成田 | 飛行機 | `pref_12.png` | `meibutsu_12_2.png` |
+| 千葉県 | 佐原 | 小野川の舟 | `pref_12.png` | `meibutsu_12_10.png` |
 | 千葉県 | 銚子 | しょうゆ | `pref_12.png` | `meibutsu_12_3.png` |
+| 茨城県 | 鹿嶋 | 要石 | `pref_08.png` | `meibutsu_08_3.png` |
+| 茨城県 | 鉾田 | トマト | `pref_08.png` | `meibutsu_08_4.png` |
+| 茨城県 | 大洗 | あんこう鍋 | `pref_08.png` | `meibutsu_08_5.png` |
 | 茨城県 | 水戸 | 納豆 | `pref_08.png` | `meibutsu_08_1.png` |
 | 茨城県 | ひたちなか | ほしいも | `pref_08.png` | `meibutsu_08_2.png` |
+| 茨城県 | 笠間 | 笠間焼 | `pref_08.png` | `meibutsu_08_6.png` |
+| 栃木県 | 真岡 | いちご | `pref_09.png` | `meibutsu_09_4.png` |
 | 栃木県 | 宇都宮 | 餃子 | `pref_09.png` | `meibutsu_09_1.png` |
 | 栃木県 | 日光 | 三猿 | `pref_09.png` | `meibutsu_09_2.png` |
+| 栃木県 | 那須塩原 | 牛乳 | `pref_09.png` | `meibutsu_09_5.png` |
 | 栃木県 | 那須 | チーズ | `pref_09.png` | `meibutsu_09_3.png` |
+| 福島県 | 白河 | 南湖だんご | `pref_07.png` | `meibutsu_07_3.png` |
+| 福島県 | 大内宿 | ねぎそば | `pref_07.png` | `meibutsu_07_4.png` |
 | 福島県 | 会津若松 | 赤べこ | `pref_07.png` | `meibutsu_07_1.png` |
 | 福島県 | 喜多方 | 喜多方ラーメン | `pref_07.png` | `meibutsu_07_2.png` |
+| 新潟県 | 阿賀 | きつねの嫁入り行列 | `pref_15.png` | `meibutsu_15_4.png` |
+| 新潟県 | 五泉 | ぼたん | `pref_15.png` | `meibutsu_15_5.png` |
+| 新潟県 | 燕三条 | スプーン | `pref_15.png` | `meibutsu_15_6.png` |
 | 新潟県 | 新潟 | 笹だんご | `pref_15.png` | `meibutsu_15_1.png` |
 | 新潟県 | 佐渡 | たらい舟 | `pref_15.png` | `meibutsu_15_2.png` |
 | 新潟県 | 村上 | 塩引き鮭 | `pref_15.png` | `meibutsu_15_3.png` |
+| 新潟県 | 山北 | 栃もち | `pref_15.png` | `meibutsu_15_7.png` |
+| 山形県 | 温海 | 赤かぶ | `pref_06.png` | `meibutsu_06_4.png` |
 | 山形県 | 鶴岡 | だだちゃ豆 | `pref_06.png` | `meibutsu_06_1.png` |
+| 山形県 | 羽黒山 | ほら貝 | `pref_06.png` | `meibutsu_06_5.png` |
+| 山形県 | 西川 | 山菜 | `pref_06.png` | `meibutsu_06_6.png` |
 | 山形県 | 天童 | 将棋の駒 | `pref_06.png` | `meibutsu_06_2.png` |
 | 山形県 | 山形 | さくらんぼ | `pref_06.png` | `meibutsu_06_3.png` |
+| 山形県 | 蔵王 | 樹氷 | `pref_06.png` | `meibutsu_06_7.png` |
+| 宮城県 | 秋保 | おはぎ | `pref_04.png` | `meibutsu_04_3.png` |
 | 宮城県 | 仙台 | 牛タン | `pref_04.png` | `meibutsu_04_1.png` |
 | 宮城県 | 松島 | 牡蠣 | `pref_04.png` | `meibutsu_04_2.png` |
+| 宮城県 | 大崎 | こけし | `pref_04.png` | `meibutsu_04_4.png` |
+| 宮城県 | 登米 | 油麩丼 | `pref_04.png` | `meibutsu_04_5.png` |
+| 岩手県 | 一関 | もち | `pref_03.png` | `meibutsu_03_5.png` |
 | 岩手県 | 平泉 | 金色堂 | `pref_03.png` | `meibutsu_03_1.png` |
+| 岩手県 | 奥州 | 南部風鈴 | `pref_03.png` | `meibutsu_03_6.png` |
 | 岩手県 | 花巻 | わんこそば | `pref_03.png` | `meibutsu_03_2.png` |
 | 岩手県 | 盛岡 | 南部鉄器 | `pref_03.png` | `meibutsu_03_3.png` |
+| 岩手県 | 区界 | やまぶどう | `pref_03.png` | `meibutsu_03_7.png` |
+| 岩手県 | 新里 | ひっつみ | `pref_03.png` | `meibutsu_03_8.png` |
 | 岩手県 | 宮古 | ウニ | `pref_03.png` | `meibutsu_03_4.png` |
+| 岩手県 | 岩泉 | 龍泉洞 | `pref_03.png` | `meibutsu_03_9.png` |
+| 岩手県 | 葛巻 | 白樺 | `pref_03.png` | `meibutsu_03_10.png` |
+| 岩手県 | 八幡平 | ドラゴンアイ | `pref_03.png` | `meibutsu_03_11.png` |
+| 岩手県 | 雫石 | 一本桜 | `pref_03.png` | `meibutsu_03_12.png` |
+| 秋田県 | 田沢湖 | たつこ像 | `pref_05.png` | `meibutsu_05_4.png` |
 | 秋田県 | 角館 | きりたんぽ | `pref_05.png` | `meibutsu_05_1.png` |
+| 秋田県 | 協和 | いぶりがっこ | `pref_05.png` | `meibutsu_05_5.png` |
+| 秋田県 | 秋田 | 竿燈 | `pref_05.png` | `meibutsu_05_6.png` |
 | 秋田県 | 男鹿 | なまはげ | `pref_05.png` | `meibutsu_05_2.png` |
+| 秋田県 | 大潟 | お米 | `pref_05.png` | `meibutsu_05_7.png` |
+| 秋田県 | 能代 | バスケットボール | `pref_05.png` | `meibutsu_05_8.png` |
+| 秋田県 | 鷹巣 | 大太鼓 | `pref_05.png` | `meibutsu_05_9.png` |
 | 秋田県 | 大館 | 秋田犬 | `pref_05.png` | `meibutsu_05_3.png` |
+| 青森県 | 大鰐 | 大鰐温泉もやし | `pref_02.png` | `meibutsu_02_5.png` |
 | 青森県 | 弘前 | りんご | `pref_02.png` | `meibutsu_02_1.png` |
+| 青森県 | 黒石 | つゆやきそば | `pref_02.png` | `meibutsu_02_6.png` |
 | 青森県 | 青森 | ねぶた | `pref_02.png` | `meibutsu_02_2.png` |
+| 青森県 | 浅虫 | 浅虫温泉の湯 | `pref_02.png` | `meibutsu_02_7.png` |
+| 青森県 | 七戸 | 絵馬 | `pref_02.png` | `meibutsu_02_8.png` |
+| 青森県 | 十和田 | にんにく | `pref_02.png` | `meibutsu_02_9.png` |
 | 青森県 | 八戸 | せんべい汁 | `pref_02.png` | `meibutsu_02_3.png` |
+| 青森県 | 三沢 | ごぼう | `pref_02.png` | `meibutsu_02_10.png` |
+| 青森県 | 六ヶ所 | 子牛 | `pref_02.png` | `meibutsu_02_11.png` |
+| 青森県 | 横浜町 | ナマコ | `pref_02.png` | `meibutsu_02_12.png` |
+| 青森県 | むつ | 海軍コロッケ | `pref_02.png` | `meibutsu_02_13.png` |
 | 青森県 | 大間 | 大間のマグロ | `pref_02.png` | `meibutsu_02_4.png` |
 | 北海道 | 函館 | いかめし | `pref_01.png` | `meibutsu_01_1.png` |
+| 北海道 | 大沼 | 大沼だんご | `pref_01.png` | `meibutsu_01_16.png` |
+| 北海道 | 森 | とうもろこし | `pref_01.png` | `meibutsu_01_17.png` |
+| 北海道 | 八雲 | 木彫りの熊 | `pref_01.png` | `meibutsu_01_18.png` |
+| 北海道 | 長万部 | かにめし | `pref_01.png` | `meibutsu_01_19.png` |
+| 北海道 | 洞爺湖 | 洞爺湖の花火 | `pref_01.png` | `meibutsu_01_20.png` |
 | 北海道 | 登別 | 鬼の金棒 | `pref_01.png` | `meibutsu_01_2.png` |
+| 北海道 | 白老 | たらこ | `pref_01.png` | `meibutsu_01_21.png` |
+| 北海道 | 支笏湖 | ヒメマス | `pref_01.png` | `meibutsu_01_22.png` |
+| 北海道 | 定山渓 | かっぱ | `pref_01.png` | `meibutsu_01_23.png` |
 | 北海道 | 小樽 | オルゴール | `pref_01.png` | `meibutsu_01_3.png` |
 | 北海道 | 札幌 | 時計台 | `pref_01.png` | `meibutsu_01_4.png` |
+| 北海道 | 長沼 | ジンギスカン | `pref_01.png` | `meibutsu_01_24.png` |
 | 北海道 | 夕張 | メロン | `pref_01.png` | `meibutsu_01_5.png` |
+| 北海道 | 占冠 | 雲海 | `pref_01.png` | `meibutsu_01_25.png` |
+| 北海道 | 新得 | そばの実 | `pref_01.png` | `meibutsu_01_26.png` |
+| 北海道 | 芽室 | じゃがいも | `pref_01.png` | `meibutsu_01_27.png` |
 | 北海道 | 帯広 | 豚丼 | `pref_01.png` | `meibutsu_01_6.png` |
+| 北海道 | 鹿追 | ナキウサギ | `pref_01.png` | `meibutsu_01_28.png` |
+| 北海道 | 南富良野 | イトウ | `pref_01.png` | `meibutsu_01_29.png` |
 | 北海道 | 富良野 | ラベンダー | `pref_01.png` | `meibutsu_01_7.png` |
+| 北海道 | 美瑛 | 麦わらロール | `pref_01.png` | `meibutsu_01_30.png` |
 | 北海道 | 旭川 | ペンギン | `pref_01.png` | `meibutsu_01_8.png` |
+| 北海道 | 和寒 | かぼちゃ | `pref_01.png` | `meibutsu_01_31.png` |
+| 北海道 | 士別 | 羊 | `pref_01.png` | `meibutsu_01_32.png` |
+| 北海道 | 名寄 | ひまわり | `pref_01.png` | `meibutsu_01_33.png` |
+| 北海道 | 美深 | チョウザメ | `pref_01.png` | `meibutsu_01_34.png` |
+| 北海道 | 音威子府 | トーテムポール | `pref_01.png` | `meibutsu_01_35.png` |
+| 北海道 | 中川 | アンモナイト | `pref_01.png` | `meibutsu_01_36.png` |
+| 北海道 | 幌延 | トナカイ | `pref_01.png` | `meibutsu_01_37.png` |
+| 北海道 | 豊富 | エゾカンゾウ | `pref_01.png` | `meibutsu_01_38.png` |
+| 北海道 | 稚内 | ゴマフアザラシ | `pref_01.png` | `meibutsu_01_39.png` |
 | 北海道 | 宗谷岬 | 最北端の碑 | `pref_01.png` | `meibutsu_01_9.png` |
+| 北海道 | 猿払 | ホタテ | `pref_01.png` | `meibutsu_01_40.png` |
+| 北海道 | 浜頓別 | 白鳥 | `pref_01.png` | `meibutsu_01_41.png` |
+| 北海道 | 枝幸 | 毛ガニ | `pref_01.png` | `meibutsu_01_42.png` |
+| 北海道 | 音標 | サケの稚魚 | `pref_01.png` | `meibutsu_01_43.png` |
+| 北海道 | 雄武 | 鮭とば | `pref_01.png` | `meibutsu_01_44.png` |
+| 北海道 | 興部 | ハマナス | `pref_01.png` | `meibutsu_01_45.png` |
 | 北海道 | 紋別 | 流氷 | `pref_01.png` | `meibutsu_01_10.png` |
+| 北海道 | 湧別 | チューリップ | `pref_01.png` | `meibutsu_01_46.png` |
+| 北海道 | 常呂 | カーリング | `pref_01.png` | `meibutsu_01_47.png` |
 | 北海道 | 網走 | 監獄の門 | `pref_01.png` | `meibutsu_01_11.png` |
+| 北海道 | 小清水 | エゾスカシユリ | `pref_01.png` | `meibutsu_01_48.png` |
+| 北海道 | 斜里 | オジロワシ | `pref_01.png` | `meibutsu_01_49.png` |
 | 北海道 | 知床 | ヒグマ | `pref_01.png` | `meibutsu_01_12.png` |
+| 北海道 | 羅臼 | ホッケ | `pref_01.png` | `meibutsu_01_50.png` |
+| 北海道 | 標津 | イクラ | `pref_01.png` | `meibutsu_01_51.png` |
+| 北海道 | 中標津 | 防風林 | `pref_01.png` | `meibutsu_01_52.png` |
 | 北海道 | 摩周湖 | 摩周湖の霧 | `pref_01.png` | `meibutsu_01_13.png` |
+| 北海道 | 屈斜路湖 | クッシー | `pref_01.png` | `meibutsu_01_53.png` |
+| 北海道 | 阿寒湖 | まりも | `pref_01.png` | `meibutsu_01_54.png` |
+| 北海道 | 鶴居 | カヌー | `pref_01.png` | `meibutsu_01_55.png` |
 | 北海道 | 釧路 | タンチョウ | `pref_01.png` | `meibutsu_01_14.png` |
+| 北海道 | 厚岸 | ウイスキー | `pref_01.png` | `meibutsu_01_56.png` |
+| 北海道 | 浜中 | ラッコ | `pref_01.png` | `meibutsu_01_57.png` |
+| 北海道 | 厚床 | エゾシカ | `pref_01.png` | `meibutsu_01_58.png` |
+| 北海道 | 根室 | さんま | `pref_01.png` | `meibutsu_01_59.png` |
 | 北海道 | 納沙布岬 | 日の出 | `pref_01.png` | `meibutsu_01_15.png` |
 
 タップしたとき:
@@ -234,8 +467,9 @@
 ## 仕様書 2: 旅のしくみ
 
 - 距離は「累計の歩数 × 歩幅」。歩幅は標準70cm、アプリの画面で40〜100cmの範囲を5cmきざみで変えられる。歩幅を変えると、これまでの距離も計算し直す
-- 道すじは `tools/route.csv` の145地点。47都道府県をすべて通る。区間の距離は、となり合う2地点の直線距離
-- ゴールの納沙布岬まで8,333km。区間は平均58km（最短11km、最長287km）。1日8,000歩（5.6km）なら、名物が変わるのは平均で10日に1回、ゴールまで約4年
+- 道すじは `tools/route.csv` の376地点。47都道府県をすべて通る。陸の区間の距離は、となり合う2地点の直線距離
+- 海をまたぐ26区間（沖縄と鹿児島の島々、天草〜島原、佐賀関〜佐田岬、明石〜淡路島〜神戸、新潟〜佐渡〜村上、横須賀〜鋸南、大間〜函館）は船で渡る扱いにして、実際の距離にかかわらず1区間10kmにする。海の上で同じ文が何週間も続かないようにするため。累計の距離の数字は、歩いたぶんのまま出す
+- ゴールの納沙布岬まで8,020km。陸の区間は平均22km（最短8km、最長40km）。1日8,000歩（5.6km）なら、文が変わるのは平均で4日に1回、那覇まで約2週間、九州本土（指宿）まで約2か月、ゴールまで約4年
 - ある地点に着いてから次の地点に着くまで、その地点の文を帯に出す
 - ゴールに着いたあとは、20km進むと与那国島に戻って2周目が始まる。累計の距離は増えつづける
 
@@ -310,8 +544,8 @@
 
 | 決めること | 選択肢 | 仮置き | 決める人 |
 | --- | --- | --- | --- |
-| 道すじの長さ | いまの全県めぐり（8,333km、約4年）、まっすぐな短い道すじ（3,000km台）、地点を増やして名物の切り替わりを早くする | 全県めぐり・145地点 | 依頼者 |
-| 名物と帯の文の中身 | `tools/route.csv` を書き換える | いまの145個（文は Claude が書いた案） | 依頼者 |
+| 道すじの長さ | いまの全県めぐり（8,020km、約4年）、地点を減らして短くする | 全県めぐり・376地点 | 依頼者 |
+| 名物と帯の文の中身 | `tools/route.csv` を書き換える | いまの376個（はじめの145個は依頼者が直したもの。0.8 で足した231個は Claude が書いた案で、文の終わりに「....」を付けて形をそろえてある） | 依頼者 |
 | 絵 | 依頼者が用意する（都道府県の形47枚、そのあと名物） | 絵が置かれるまでは仮の丸 | 依頼者 |
 | 検索の言葉 | 「名物 都道府県」、名物だけ | 名物 都道府県 | 依頼者 |
 | よこずらしの動かし方 | 常時ループ、静止 | 常時ループ | 実機で電池を見てから依頼者 |
@@ -322,6 +556,9 @@
 - 0.2（2026-11-15）: 歩数をヘルスコネクトから読むように替えた。依頼者の端末（Android 14）で、歩数を取得できた
 - 0.3（2026-11-15）: 名前を「よこめぐり」にした。アクセントカラーを #EE7948 にした。名物の絵を右上に出す場所を作り、配置を組み直した。絵は都道府県ごとの47枚から始めて、地点ごとの絵をあとから足せる作りにした
 - 0.5（2026-11-15）: 帯の文を、地点ごとの「元の状態・いい状態にずらす」文に替えた。帯を2行にした
+- 0.10（2026-11-15）: 右上の絵を小さくし（66→50）、その下に都道府県の名前を添えた。左上の行は地点の名前だけにした
+- 0.9（2026-11-15）: 右上の絵の下の段に、都道府県の標章47枚を入れた
+- 0.8（2026-11-15）: 目標が少なく、海の上が長すぎたので、道すじを作り直した。海の区間を船で渡る扱い（1区間10km）にし、地点を145から376に増やした
 - 0.7（2026-11-15）: アプリのアイコン（スニーカーとよこずらし）を入れた。もとの絵は `assets/icon.png`、`tools/make_icon.py` で各大きさを作る
 - 0.6（2026-11-15）: 帯を1行に戻し、文をよこずらしニュースと同じしくみで流すようにした
 - 0.4（2026-11-15）: 右上の絵を2段（下が都道府県の形、上が名物）にした。帯のタップで、名物をブラウザで検索するようにした
