@@ -7,7 +7,7 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 
-/** 約15分ごとに歩数センサーを読む。再起動のあとも続く。 */
+/** 約15分ごとにヘルスコネクトから歩数を読む。再起動のあとも続く。 */
 public class StepJob extends JobService {
     private static final int JOB_PERIODIC = 1;
     private static final long PERIOD = 15 * 60 * 1000L; // JobScheduler で指定できる最短

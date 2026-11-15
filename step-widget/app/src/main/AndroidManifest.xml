@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.yokozurashi.steps"
-    android:versionCode="1"
-    android:versionName="0.1">
+    android:versionCode="2"
+    android:versionName="0.2">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
-    <!-- 歩数センサーを読むための許可（Android 10 以上で、画面から許可をもらう） -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- ヘルスコネクトの歩数を読む許可。2つめは、アプリを開いていないときにも読むためのもの -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
 
     <application
         android:label="@string/app_name"
@@ -25,6 +24,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ヘルスコネクトの許可の画面から「このアプリがデータを使う理由」を開くときの入口。
+             これがないと、Android 14 以上で許可を求められない -->
+        <activity-alias
+            android:name=".ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".MainActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
 
         <receiver
             android:name=".StepWidgetProvider"

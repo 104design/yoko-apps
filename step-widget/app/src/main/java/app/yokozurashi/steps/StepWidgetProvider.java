@@ -85,10 +85,10 @@ public class StepWidgetProvider extends AppWidgetProvider {
         t.from = j.place;
         t.to = j.next + "まで あと" + Journey.km(j.toNextM) + "km";
         t.note = note(context, j);
-        if (status == StepReader.NO_SENSOR) {
-            t.band = "歩数センサーがありません";
+        if (status == StepReader.UNSUPPORTED) {
+            t.band = "Android 14 以上が必要です";
         } else if (status == StepReader.NO_PERMISSION) {
-            t.band = "タップして歩数の利用を許可";
+            t.band = "タップして歩数の読み取りを許可";
         } else if (j.goal) {
             t.band = "ゴール！ " + j.item + "をずらしています";
         } else {
@@ -115,8 +115,9 @@ public class StepWidgetProvider extends AppWidgetProvider {
         PendingIntent reread = PendingIntent.getBroadcast(context, 2, refresh,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.tap_top, app);
-        // 許可がまだなら、下半分もアプリを開く（許可は画面からしか求められない）
-        views.setOnClickPendingIntent(R.id.tap_bottom, status == StepReader.OK ? reread : app);
+        // 裏から読めないとき（許可がまだ、など）は、下半分もアプリを開く。アプリを開けば読める
+        boolean canReread = status == StepReader.OK && StepReader.canReadInBackground(context);
+        views.setOnClickPendingIntent(R.id.tap_bottom, canReread ? reread : app);
         return views;
     }
 
