@@ -104,7 +104,7 @@ def main():
         print("%3d %-8s %-5s %7.1fkm  次まで %6.1fkm  %s" % (i + 1, p[0], p[1], at[i] / 1000, leg, p[8]))
     for p in points:
         cut = p[8].rfind("を") + 1
-        if not p[8].endswith("ずらしています") or cut == 0:
+        if not p[8].rstrip(".…。").endswith("ずらしています") or cut == 0:
             print("帯の文の形がちがう:", p[0], p[8])
     legs = [at[i + 1] - at[i] for i in range(len(at) - 1)]
     print("地点 %d、都道府県 %d、ゴールまで %.0fkm、区間の平均 %.1fkm、最長 %.1fkm、最短 %.1fkm" % (
