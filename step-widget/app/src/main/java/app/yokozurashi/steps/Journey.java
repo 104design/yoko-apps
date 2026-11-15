@@ -9,7 +9,8 @@ public class Journey {
     public String pref;      // その地点の都道府県
     public String picture;     // この地点の名物の絵の名前
     public String prefPicture; // この都道府県の形の絵の名前
-    public String item;      // いまずらしているもの
+    public String item;      // いまの地点の名物
+    public String text;      // 帯に出す文（「オスのシーサーをメスのシーサーの所にずらしています」）
     public String next;      // 次の地点の地名
     public long toNextM;     // 次の地点までの残り（m）
     public float progress;   // この区間をどこまで進んだか（0〜1）
@@ -31,6 +32,7 @@ public class Journey {
         j.picture = Route.PICTURE[i];
         j.prefPicture = Route.PREF_PICTURE[i];
         j.item = Route.ITEM[i];
+        j.text = Route.TEXT[i];
         // ゴールのあとは、少し進むと出発点に戻って次の周回が始まる
         long from = Route.AT_M[i];
         long to = j.goal ? Route.LAP_M : Route.AT_M[i + 1];

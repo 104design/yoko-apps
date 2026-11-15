@@ -79,7 +79,7 @@ public class StepWidgetProvider extends AppWidgetProvider {
         int status = StepReader.status(context);
         Journey j = Journey.at(StepStore.distanceM(context));
         Panel.Content t = new Panel.Content();
-        t.place = j.pref + " " + j.place;
+        t.place = (j.goal ? "ゴール！ " : "") + j.pref + " " + j.place;
         t.pref = j.pref;
         t.picture = j.picture;
         t.prefPicture = j.prefPicture;
@@ -94,10 +94,8 @@ public class StepWidgetProvider extends AppWidgetProvider {
             t.band = "Android 14 以上が必要です";
         } else if (status == StepReader.NO_PERMISSION) {
             t.band = "タップして歩数の読み取りを許可";
-        } else if (j.goal) {
-            t.band = "ゴール！ " + j.item + "をずらしています";
         } else {
-            t.band = j.item + "をずらしています";
+            t.band = j.text;
         }
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_steps);

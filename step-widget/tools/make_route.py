@@ -23,8 +23,11 @@ public class Route {
     /** 都道府県。 */
     public static final String[] PREF = {
 %s    };
-    /** その地点から次の地点まで、よこずらしがずらしていくもの。 */
+    /** その地点の名物。検索の言葉と、アプリの「これまでにずらしたもの」に使う。 */
     public static final String[] ITEM = {
+%s    };
+    /** その地点から次の地点に着くまで、帯に出す文。 */
+    public static final String[] TEXT = {
 %s    };
     /** その地点の名物の絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の形の絵を使う。 */
     public static final String[] PICTURE = {
@@ -43,6 +46,7 @@ public class Route {
 '''
 
 REST_M = 20000
+LINE_MAX = 16  # 帯の1行に、文字を小さくせずに入る文字数の目安
 
 PREFS = ("北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 "
          "新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 "
@@ -65,10 +69,10 @@ def load():
             if not line or line.startswith("#"):
                 continue
             cols = line.split(",")
-            name, pref, lat, lon, item, number = cols[:6]
+            name, pref, lat, lon, item, number, text = cols
             code = PREFS.index(pref) + 1
             points.append((name, pref, float(lat), float(lon), item, None,
-                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code))
+                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code, text))
     names = [p[6] for p in points]
     assert len(set(names)) == len(names), "絵の番号が、同じ都道府県の中で重なっている"
     return points
@@ -91,13 +95,20 @@ def main():
             rows([p[0] for p in points], '"%s"', 6),
             rows([p[1] for p in points], '"%s"', 6),
             rows([p[4] for p in points], '"%s"', 4),
+            rows([p[8] for p in points], '"%s"', 1),
             rows([p[6] for p in points], '"%s"', 4),
             rows([p[7] for p in points], '"%s"', 6),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))
     for i, p in enumerate(points):
         leg = (at[i + 1] - at[i]) / 1000 if i + 1 < len(points) else 0
-        print("%3d %-8s %-5s %7.1fkm  次まで %6.1fkm  %s" % (i + 1, p[0], p[1], at[i] / 1000, leg, p[4]))
+        print("%3d %-8s %-5s %7.1fkm  次まで %6.1fkm  %s" % (i + 1, p[0], p[1], at[i] / 1000, leg, p[8]))
+    for p in points:
+        cut = p[8].rfind("を") + 1
+        if not p[8].endswith("ずらしています") or cut == 0:
+            print("帯の文の形がちがう:", p[0], p[8])
+        elif max(cut, len(p[8]) - cut) > LINE_MAX:
+            print("帯の文が長い（%d文字と%d文字）: %s %s" % (cut, len(p[8]) - cut, p[0], p[8]))
     legs = [at[i + 1] - at[i] for i in range(len(at) - 1)]
     print("地点 %d、都道府県 %d、ゴールまで %.0fkm、区間の平均 %.1fkm、最長 %.1fkm、最短 %.1fkm" % (
         len(points), len(set(p[1] for p in points)), at[-1] / 1000,

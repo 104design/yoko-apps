@@ -38,7 +38,8 @@ public class Panel {
     private static final float DIGIT_TOP = 31, DIGIT_H = 32, DIGIT_GAP = 3;
     private static final float PICTURE = 66;     // 名物の絵（正方形）
     private static final float PICTURE_TOP = 10, PICTURE_RIGHT = 14;
-    private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
+    private static final float BAND_SIDE = 10, BAND_TOP = 85, BAND_H = 38;
+    private static final int MIN_SECOND_LINE = 6; // 2行目がこれより短くなるなら、分けずに1行で出す
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
@@ -192,13 +193,28 @@ public class Panel {
         p.setStrokeWidth(2);
         p.setColor(INK);
         c.drawRoundRect(band, 14, 14, p);
+        // 1行に入ればそのまま。入らなければ、最後の「を」のあとで2行に分ける
         TextPaint bandPaint = text(bold, 14, INK);
         float bandRoom = band.width() - 28;
-        if (bandPaint.measureText(t.band) > bandRoom) bandPaint.setTextSize(12);
-        CharSequence bandText = TextUtils.ellipsize(t.band, bandPaint, bandRoom, TextUtils.TruncateAt.END);
+        int cut = t.band.lastIndexOf('を') + 1;
+        String[] lines = {t.band};
+        if (bandPaint.measureText(t.band) > bandRoom) {
+            bandPaint.setTextSize(12);
+            if (cut > 0 && t.band.length() - cut >= MIN_SECOND_LINE) {
+                lines = new String[]{t.band.substring(0, cut), t.band.substring(cut)};
+            }
+            // それでも入らない行があれば、入るところまで文字を小さくする（10spまで）
+            float widest = 0;
+            for (String line : lines) widest = Math.max(widest, bandPaint.measureText(line));
+            if (widest > bandRoom) bandPaint.setTextSize(Math.max(10, 12 * bandRoom / widest));
+        }
         Paint.FontMetrics fm = bandPaint.getFontMetrics();
-        c.drawText(bandText, 0, bandText.length(), band.left + 14,
-                band.centerY() - (fm.ascent + fm.descent) / 2, bandPaint);
+        float lineStep = bandPaint.getTextSize() * 1.25f;
+        float firstBase = band.centerY() - (fm.ascent + fm.descent) / 2 - lineStep * (lines.length - 1) / 2;
+        for (int i = 0; i < lines.length; i++) {
+            CharSequence line = TextUtils.ellipsize(lines[i], bandPaint, bandRoom, TextUtils.TruncateAt.END);
+            c.drawText(line, 0, line.length(), band.left + 14, firstBase + lineStep * i, bandPaint);
+        }
 
         // 道のりの線：左端がいまの地点、右端が次の地点。進んだぶんを太いアクセントカラーで塗る
         float x0 = TRACK_SIDE, x1 = lay.w - TRACK_SIDE, y = lay.trackY;
