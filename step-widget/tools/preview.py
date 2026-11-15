@@ -20,7 +20,8 @@ ACCENT, ACCENT_DARK, ACCENT_PALE = "#EE7948", "#C4501F", "#FCE4D9"
 BASE_W, BASE_H = 250, 172
 SIDE = 16
 DIGIT_TOP, DIGIT_H, DIGIT_GAP = 31, 32, 3
-PICTURE, PICTURE_TOP, PICTURE_RIGHT = 66, 10, 14
+PICTURE, PICTURE_TOP, PICTURE_RIGHT = 50, 9, 20
+PREF_BASE = 13
 BAND_SIDE, BAND_TOP, BAND_H = 10, 88, 30
 TRACK_SIDE, TRACK_UP = 26, 26
 YOKO_BOX, YOKO_FEET = 60, 0.77
@@ -59,10 +60,10 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     else:
         r = (PICTURE / 2 - 2) * k
         d.ellipse([cx * k - r, cy * k - r, cx * k + r, cy * k + r], fill=ACCENT_PALE)
-        d.text((cx * k, (cy + 4) * k), pref, font=bold(11), fill=ACCENT_DARK, anchor="ms")
+    d.text((cx * k, (PICTURE_TOP + PICTURE + PREF_BASE) * k), pref, font=bold(10.5), fill=ACCENT_DARK, anchor="ms")
     left_room = pic_left - 8 - SIDE
 
-    text(pref + " " + name, SIDE, 25, bold(13), ACCENT_DARK)
+    text(name, SIDE, 25, bold(13), ACCENT_DARK)
 
     # 累計の距離。幅に入らなければ全体を縮める
     bottom = DIGIT_TOP + DIGIT_H

@@ -36,8 +36,9 @@ public class Panel {
 
     private static final float SIDE = 16;        // 文字の左右の余白
     private static final float DIGIT_TOP = 31, DIGIT_H = 32, DIGIT_GAP = 3;
-    private static final float PICTURE = 66;     // 名物の絵（正方形）
-    private static final float PICTURE_TOP = 10, PICTURE_RIGHT = 14;
+    private static final float PICTURE = 50;     // 右上の絵（正方形）。下に都道府県の名前を添える
+    private static final float PICTURE_TOP = 9, PICTURE_RIGHT = 20;
+    private static final float PREF_BASE = 13;   // 絵の下端から、都道府県の名前の文字の下端まで
     private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
     private static final float BAND_TEXT_SIDE = 12; // 帯の中の、文字の左右の余白
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
@@ -99,8 +100,8 @@ public class Panel {
 
     /** 描く内容。 */
     public static class Content {
-        public String place;   // 1行目（「沖縄県 那覇」）
-        public String pref;    // 都道府県（絵がまだないときの仮の丸に書く）
+        public String place;   // 1行目（「那覇」）
+        public String pref;    // 都道府県（絵の下に書く）
         public String picture;     // この地点の名物の絵の名前（meibutsu_NN_M）
         public String prefPicture; // この都道府県の形の絵の名前（pref_NN）
         public long distanceM; // 累計の距離
@@ -149,13 +150,14 @@ public class Panel {
                     pic.centerX() + pw / 2, pic.centerY() + ph / 2), img);
             picture.recycle();
         } else {
-            // 絵がまだない。薄い丸に都道府県の名前を書いておく
+            // 絵がまだない。薄い丸を置いておく
             p.setStyle(Paint.Style.FILL);
             p.setColor(ACCENT_PALE);
             c.drawCircle(pic.centerX(), pic.centerY(), PICTURE / 2 - 2, p);
-            TextPaint prefPaint = text(bold, 11, ACCENT_DARK);
-            c.drawText(t.pref, pic.centerX() - prefPaint.measureText(t.pref) / 2, pic.centerY() + 4, prefPaint);
         }
+        // 絵の下に、都道府県の名前。標章と名前をいっしょに覚えられるように、いつも添える
+        TextPaint prefPaint = text(bold, 10.5f, ACCENT_DARK);
+        c.drawText(t.pref, pic.centerX() - prefPaint.measureText(t.pref) / 2, pic.bottom + PREF_BASE, prefPaint);
         float leftRoom = pic.left - 8 - SIDE; // 絵の左にある、文字のための幅
 
         // 1行目：いまの場所

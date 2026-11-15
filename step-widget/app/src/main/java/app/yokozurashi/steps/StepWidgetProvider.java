@@ -79,7 +79,7 @@ public class StepWidgetProvider extends AppWidgetProvider {
         int status = StepReader.status(context);
         Journey j = Journey.at(StepStore.distanceM(context));
         Panel.Content t = new Panel.Content();
-        t.place = (j.goal ? "ゴール！ " : "") + j.pref + " " + j.place;
+        t.place = (j.goal ? "ゴール！ " : "") + j.place;
         t.pref = j.pref;
         t.picture = j.picture;
         t.prefPicture = j.prefPicture;
