@@ -26,6 +26,12 @@ public class Route {
     /** その地点から次の地点まで、よこずらしがずらしていくもの。 */
     public static final String[] ITEM = {
 %s    };
+    /** その地点の名物の絵の名前（meibutsu_NN_M）。絵がなければ、都道府県の形の絵を使う。 */
+    public static final String[] PICTURE = {
+%s    };
+    /** その都道府県の形の絵の名前（pref_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
+    public static final String[] PREF_PICTURE = {
+%s    };
     /** 出発点からその地点までの道のり（m）。 */
     public static final int[] AT_M = {
 %s    };
@@ -37,6 +43,11 @@ public class Route {
 '''
 
 REST_M = 20000
+
+PREFS = ("北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 "
+         "新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 "
+         "奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 "
+         "熊本県 大分県 宮崎県 鹿児島県 沖縄県").split()
 
 
 def distance_m(a, b):
@@ -53,8 +64,13 @@ def load():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            name, pref, lat, lon, item = line.split(",")
-            points.append((name, pref, float(lat), float(lon), item))
+            cols = line.split(",")
+            name, pref, lat, lon, item, number = cols[:6]
+            code = PREFS.index(pref) + 1
+            points.append((name, pref, float(lat), float(lon), item, None,
+                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code))
+    names = [p[6] for p in points]
+    assert len(set(names)) == len(names), "絵の番号が、同じ都道府県の中で重なっている"
     return points
 
 
@@ -75,6 +91,8 @@ def main():
             rows([p[0] for p in points], '"%s"', 6),
             rows([p[1] for p in points], '"%s"', 6),
             rows([p[4] for p in points], '"%s"', 4),
+            rows([p[6] for p in points], '"%s"', 4),
+            rows([p[7] for p in points], '"%s"', 6),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))
     for i, p in enumerate(points):
@@ -86,5 +104,22 @@ def main():
         sum(legs) / len(legs) / 1000, max(legs) / 1000, min(legs) / 1000))
 
 
+def pictures():
+    """絵のファイル名の一覧（通る順）を、Markdown の表にして表示する。
+
+    都道府県の形の絵（まず用意する47枚）と、名物の絵（あとから足すぶん）の両方を出す。
+    """
+    lines = []
+    for p in load():
+        lines.append("| %s | %s | %s | %s | `%s.png` |" % (
+            p[1], p[0], p[4], "`%s.png`" % p[7], p[6]))
+    print("| 都道府県 | 地点 | 名物 | 都道府県の形の絵（まず用意する47枚） | 名物の絵（あとから足す） |\n"
+          "| --- | --- | --- | --- | --- |\n" + "\n".join(lines))
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--pictures":
+        pictures()
+    else:
+        main()

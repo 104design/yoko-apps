@@ -7,6 +7,8 @@ public class Journey {
     public boolean goal;     // ゴール（最後の地点）に着いていて、次の周回を待っているところか
     public String place;     // その地点の地名
     public String pref;      // その地点の都道府県
+    public String picture;     // この地点の名物の絵の名前
+    public String prefPicture; // この都道府県の形の絵の名前
     public String item;      // いまずらしているもの
     public String next;      // 次の地点の地名
     public long toNextM;     // 次の地点までの残り（m）
@@ -26,6 +28,8 @@ public class Journey {
         j.goal = i == last;
         j.place = Route.NAME[i];
         j.pref = Route.PREF[i];
+        j.picture = Route.PICTURE[i];
+        j.prefPicture = Route.PREF_PICTURE[i];
         j.item = Route.ITEM[i];
         // ゴールのあとは、少し進むと出発点に戻って次の周回が始まる
         long from = Route.AT_M[i];

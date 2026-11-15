@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# よこずらしの旅のAPKを作る。news-widget/build.sh と同じ流れ。
+# よこめぐりのAPKを作る。news-widget/build.sh と同じ流れ。
 #
 # 道具は次のどちらかを使う。
 #   1. Android SDK（ANDROID_SDK_ROOT、なければ ~/workspace/tools/android-sdk）の build-tools 34.0.0
@@ -16,7 +16,7 @@ SDK="${ANDROID_SDK_ROOT:-$HOME/workspace/tools/android-sdk}"
 BT="$SDK/build-tools/34.0.0"
 APP=app/src/main
 OUT=build
-APK="$OUT/yokosteps.apk"
+APK="$OUT/yokomeguri.apk"
 
 if [ -x "$BT/aapt2" ]; then
   AAPT2="$BT/aapt2"; ZIPALIGN="$BT/zipalign"; APKSIGNER="$BT/apksigner"; DEXER="d8"

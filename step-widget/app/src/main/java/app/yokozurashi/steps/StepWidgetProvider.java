@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
@@ -13,7 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** よこずらしの旅のウィジェット。 */
+/** よこめぐりのウィジェット。 */
 public class StepWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_REFRESH = "app.yokozurashi.steps.REFRESH";
     public static final String ACTION_DAY_TICK = "app.yokozurashi.steps.DAY_TICK";
@@ -79,12 +80,16 @@ public class StepWidgetProvider extends AppWidgetProvider {
         Journey j = Journey.at(StepStore.distanceM(context));
         Panel.Content t = new Panel.Content();
         t.place = j.pref + " " + j.place;
+        t.pref = j.pref;
+        t.picture = j.picture;
+        t.prefPicture = j.prefPicture;
         t.distanceM = j.distanceM;
         t.today = StepStore.today(context);
         t.progress = j.progress;
         t.from = j.place;
         t.to = j.next + "まで あと" + Journey.km(j.toNextM) + "km";
-        t.note = note(context, j);
+        long read = StepStore.readTime(context);
+        t.time = read == 0 ? null : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
         if (status == StepReader.UNSUPPORTED) {
             t.band = "Android 14 以上が必要です";
         } else if (status == StepReader.NO_PERMISSION) {
@@ -118,18 +123,30 @@ public class StepWidgetProvider extends AppWidgetProvider {
         // 裏から読めないとき（許可がまだ、など）は、下半分もアプリを開く。アプリを開けば読める
         boolean canReread = status == StepReader.OK && StepReader.canReadInBackground(context);
         views.setOnClickPendingIntent(R.id.tap_bottom, canReread ? reread : app);
+
+        // 帯をタップしたら、いまずらしている名物をブラウザで検索する
+        int bandLeft = clamp(Math.round(lay.bandLeft() * density), 0, wPx);
+        int bandTop = clamp(Math.round(lay.bandTopDp() * density), 0, hPx);
+        views.setViewPadding(R.id.band_box, bandLeft, bandTop,
+                Math.max(0, wPx - bandLeft - Math.round(lay.bandWidth() * density)),
+                Math.max(0, hPx - bandTop - Math.round(lay.bandHeight() * density)));
+        PendingIntent bandTap = app;
+        if (status == StepReader.OK) {
+            Intent search = new Intent(Intent.ACTION_VIEW, searchUrl(j));
+            search.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            bandTap = PendingIntent.getActivity(context, 4, search,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        views.setOnClickPendingIntent(R.id.tap_band, bandTap);
         return views;
+    }
+
+    /** 名物の検索結果のURL。同じ名前のものと区別がつくよう、都道府県の名前を添えて検索する。 */
+    static Uri searchUrl(Journey j) {
+        return Uri.parse("https://www.google.com/search?q=" + Uri.encode(j.item + " " + j.pref));
     }
 
     private static int clamp(int v, int lo, int hi) {
         return Math.max(lo, Math.min(Math.max(lo, hi), v));
-    }
-
-    /** 1行目の右に出す小さな文字。2周目からの周回と、最後に歩数を読めた時刻。 */
-    private static String note(Context context, Journey j) {
-        long read = StepStore.readTime(context);
-        String time = read == 0 ? "" : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
-        if (j.lap > 1) return (j.lap + "周目 " + time).trim();
-        return time.length() == 0 ? null : time;
     }
 }

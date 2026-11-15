@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad * 2, pad, pad);
 
-        TextView title = text("よこずらしの旅", 22, 0);
+        TextView title = text("よこめぐり", 22, 0);
         // 表示の確認用。長押しすると 30km 進む（「旅をやり直す」で消える）
         title.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
@@ -122,7 +122,8 @@ public class MainActivity extends Activity {
         });
         root.addView(add);
         root.addView(text("ウィジェットの上半分をタップするとこの画面が開き、"
-                + "下半分をタップするとその場で歩数を読み直します"
+                + "オレンジの帯をタップすると名物をブラウザで検索し、"
+                + "そのほかの下半分をタップするとその場で歩数を読み直します"
                 + "（バックグラウンドでの読み取りが許可されていないときは、下半分もこの画面を開きます）。", 13, dp(6)));
 
         root.addView(text("これまでにずらしたもの", 16, pad));

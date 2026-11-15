@@ -12,7 +12,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 
 /**
- * ウィジェットの絵（地名、累計の距離、きょうの歩数、帯、道のりの線）を1枚の画像に描く。
+ * ウィジェットの絵（地名、累計の距離、きょうの歩数、名物の絵、帯、道のりの線）を1枚の画像に描く。
  * ウィジェットの文字部品は独自フォントを使えないので、手描き数字と Zen Maru Gothic をここでまとめて描く。
  * 寸法は SPEC.md の「仕様書 1: 画面」。基準は 250×172dp で、単位は dp。
  * tools/preview.py が同じ配置で見本の画像を作る。配置を変えたら両方を直す。
@@ -21,9 +21,13 @@ public class Panel {
     public static final float BASE_W = 250, BASE_H = 172;
 
     private static final int INK = 0xFF141414;
-    private static final int MAGENTA = 0xFFC8387A;
     private static final int GRAY = 0xFF5A5A5A;
-    private static final int TEAL = 0xFF72CFCB;
+    /** よこめぐりのアクセントカラー。帯と、進んだぶんの線に使う。 */
+    private static final int ACCENT = 0xFFEE7948;
+    /** アクセントを白地の文字に使うときの、濃いめの色。 */
+    private static final int ACCENT_DARK = 0xFFC4501F;
+    /** アクセントの薄い色。絵がまだない都道府県の、仮の丸に使う。 */
+    private static final int ACCENT_PALE = 0xFFFCE4D9;
 
     private static final int[] DIGITS = {
             R.drawable.num_0, R.drawable.num_1, R.drawable.num_2, R.drawable.num_3,
@@ -31,8 +35,10 @@ public class Panel {
             R.drawable.num_8, R.drawable.num_9};
 
     private static final float SIDE = 16;        // 文字の左右の余白
-    private static final float DIGIT_TOP = 32, DIGIT_H = 32, DIGIT_GAP = 3;
-    private static final float BAND_SIDE = 10, BAND_TOP = 74, BAND_H = 34;
+    private static final float DIGIT_TOP = 31, DIGIT_H = 32, DIGIT_GAP = 3;
+    private static final float PICTURE = 66;     // 名物の絵（正方形）
+    private static final float PICTURE_TOP = 10, PICTURE_RIGHT = 14;
+    private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
@@ -66,18 +72,49 @@ public class Panel {
         public float yokoSize() {
             return YOKO_BOX * scale;
         }
+
+        /** 帯の位置と大きさ（実寸のdp）。帯のタップを受ける枠を、ここに重ねる。 */
+        public float bandLeft() {
+            return BAND_SIDE * scale;
+        }
+
+        public float bandTopDp() {
+            return bandTop * scale;
+        }
+
+        public float bandWidth() {
+            return (w - BAND_SIDE * 2) * scale;
+        }
+
+        public float bandHeight() {
+            return BAND_H * scale;
+        }
     }
 
     /** 描く内容。 */
     public static class Content {
         public String place;   // 1行目（「沖縄県 那覇」）
-        public String note;    // 1行目の右（「2周目 12:34」など）。なければ null
+        public String pref;    // 都道府県（絵がまだないときの仮の丸に書く）
+        public String picture;     // この地点の名物の絵の名前（meibutsu_NN_M）
+        public String prefPicture; // この都道府県の形の絵の名前（pref_NN）
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
+        public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
         public String band;    // 帯の文
         public String from;    // 線の左端の地名
         public String to;      // 線の右端の説明（「読谷まで あと12.3km」）
         public float progress; // 区間の進み具合
+    }
+
+    /**
+     * 出す絵を選ぶ。絵は2段になっていて、下の段が都道府県の形の絵、上の段がその地点の名物の絵。
+     * 名物の絵があればそれを、なければ都道府県の形の絵を使う。どちらもなければ 0。
+     * 絵は res/drawable-nodpi にファイルを置くだけで増やせる（名前は SPEC.md の「名物の絵」）。
+     */
+    public static int pictureRes(Context ctx, String picture, String prefPicture) {
+        Resources res = ctx.getResources();
+        int id = res.getIdentifier(picture, "drawable", ctx.getPackageName());
+        return id != 0 ? id : res.getIdentifier(prefPicture, "drawable", ctx.getPackageName());
     }
 
     public static Bitmap render(Context ctx, Layout lay, float pxPerDp, Content t) {
@@ -92,38 +129,64 @@ public class Panel {
         Typeface black = res.getFont(R.font.zen_maru_black);
         Typeface bold = res.getFont(R.font.zen_maru_bold);
         Paint img = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        // 1行目：いまの場所。右に小さく、周回と読み取りの時刻
-        float noteW = 0;
-        if (t.note != null) {
-            TextPaint notePaint = text(bold, 10, GRAY);
-            noteW = notePaint.measureText(t.note) + 8;
-            c.drawText(t.note, right - noteW + 8, 25, notePaint);
+        // 右上：名物の絵
+        RectF pic = new RectF(lay.w - PICTURE_RIGHT - PICTURE, PICTURE_TOP,
+                lay.w - PICTURE_RIGHT, PICTURE_TOP + PICTURE);
+        int picRes = pictureRes(ctx, t.picture, t.prefPicture);
+        Bitmap picture = picRes == 0 ? null : BitmapFactory.decodeResource(res, picRes);
+        if (picture != null) {
+            // 縦横の比を保ったまま、枠の中央に収める
+            float fit = Math.min(pic.width() / picture.getWidth(), pic.height() / picture.getHeight());
+            float pw = picture.getWidth() * fit, ph = picture.getHeight() * fit;
+            c.drawBitmap(picture, null, new RectF(pic.centerX() - pw / 2, pic.centerY() - ph / 2,
+                    pic.centerX() + pw / 2, pic.centerY() + ph / 2), img);
+            picture.recycle();
+        } else {
+            // 絵がまだない。薄い丸に都道府県の名前を書いておく
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(ACCENT_PALE);
+            c.drawCircle(pic.centerX(), pic.centerY(), PICTURE / 2 - 2, p);
+            TextPaint prefPaint = text(bold, 11, ACCENT_DARK);
+            c.drawText(t.pref, pic.centerX() - prefPaint.measureText(t.pref) / 2, pic.centerY() + 4, prefPaint);
         }
-        TextPaint placePaint = text(bold, 13, MAGENTA);
-        CharSequence place = TextUtils.ellipsize(t.place, placePaint,
-                right - SIDE - noteW, TextUtils.TruncateAt.END);
+        float leftRoom = pic.left - 8 - SIDE; // 絵の左にある、文字のための幅
+
+        // 1行目：いまの場所
+        TextPaint placePaint = text(bold, 13, ACCENT_DARK);
+        CharSequence place = TextUtils.ellipsize(t.place, placePaint, leftRoom, TextUtils.TruncateAt.END);
         c.drawText(place, 0, place.length(), SIDE, 25, placePaint);
 
-        // 2行目の左：累計の距離。km の整数部は手描き数字、小数と単位はフォント
-        float bottom = DIGIT_TOP + DIGIT_H;
-        float x = drawNumber(c, res, img, t.distanceM / 1000, SIDE);
-        TextPaint unit = text(black, 15, INK);
+        // 2行目：累計の距離。km の整数部は手描き数字、小数と単位はフォント。幅に入らなければ全体を縮める
+        String whole = String.valueOf(t.distanceM / 1000);
         String tail = "." + (t.distanceM % 1000 / 100) + "km";
+        TextPaint unit = text(black, 15, INK);
+        float need = numberWidth(res, whole) + unit.measureText(tail);
+        float bottom = DIGIT_TOP + DIGIT_H;
+        c.save();
+        if (need > leftRoom) c.scale(leftRoom / need, leftRoom / need, SIDE, bottom);
+        float x = drawNumber(c, res, img, whole, SIDE);
         c.drawText(tail, x, bottom - 2, unit);
+        c.restore();
 
-        // 2行目の右：きょうの歩数
+        // 3行目：きょうの歩数と、最後に読めた時刻
         TextPaint label = text(bold, 10, GRAY);
-        TextPaint steps = text(black, 16, INK);
+        TextPaint steps = text(black, 13, INK);
         String todayText = String.format("%,d歩", t.today);
-        c.drawText("きょう", right - label.measureText("きょう"), bottom - 20, label);
-        c.drawText(todayText, right - steps.measureText(todayText), bottom - 2, steps);
+        float sx = SIDE;
+        c.drawText("きょう", sx, bottom + 17, label);
+        sx += label.measureText("きょう") + 4;
+        c.drawText(todayText, sx, bottom + 17, steps);
+        sx += steps.measureText(todayText) + 7;
+        if (t.time != null && sx + label.measureText(t.time) <= SIDE + leftRoom) {
+            c.drawText(t.time, sx, bottom + 17, label);
+        }
 
         // 帯：いまずらしているもの
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         RectF band = new RectF(BAND_SIDE, lay.bandTop, lay.w - BAND_SIDE, lay.bandTop + BAND_H);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(TEAL);
+        p.setColor(ACCENT);
         c.drawRoundRect(band, 14, 14, p);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(2);
@@ -137,11 +200,11 @@ public class Panel {
         c.drawText(bandText, 0, bandText.length(), band.left + 14,
                 band.centerY() - (fm.ascent + fm.descent) / 2, bandPaint);
 
-        // 道のりの線：左端がいまの地点、右端が次の地点。進んだぶんを太いティールで塗る
+        // 道のりの線：左端がいまの地点、右端が次の地点。進んだぶんを太いアクセントカラーで塗る
         float x0 = TRACK_SIDE, x1 = lay.w - TRACK_SIDE, y = lay.trackY;
         float xp = x0 + (x1 - x0) * Math.max(0, Math.min(1, t.progress));
         p.setStrokeCap(Paint.Cap.ROUND);
-        p.setColor(TEAL);
+        p.setColor(ACCENT);
         p.setStrokeWidth(6);
         c.drawLine(x0, y, xp, y, p);
         p.setColor(INK);
@@ -165,9 +228,20 @@ public class Panel {
         return bmp;
     }
 
+    /** 手描き数字を並べたときの幅。 */
+    private static float numberWidth(Resources res, String s) {
+        BitmapFactory.Options size = new BitmapFactory.Options();
+        size.inJustDecodeBounds = true;
+        float w = 0;
+        for (int i = 0; i < s.length(); i++) {
+            BitmapFactory.decodeResource(res, DIGITS[s.charAt(i) - '0'], size);
+            w += DIGIT_H * size.outWidth / size.outHeight + DIGIT_GAP;
+        }
+        return w;
+    }
+
     /** 手描き数字を並べて描き、描き終えた右端の x を返す。 */
-    private static float drawNumber(Canvas c, Resources res, Paint img, long value, float x) {
-        String s = String.valueOf(value);
+    private static float drawNumber(Canvas c, Resources res, Paint img, String s, float x) {
         for (int i = 0; i < s.length(); i++) {
             Bitmap digit = BitmapFactory.decodeResource(res, DIGITS[s.charAt(i) - '0']);
             float w = DIGIT_H * digit.getWidth() / digit.getHeight();
