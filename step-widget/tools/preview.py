@@ -21,7 +21,7 @@ BASE_W, BASE_H = 250, 172
 SIDE = 16
 DIGIT_TOP, DIGIT_H, DIGIT_GAP = 31, 32, 3
 PICTURE, PICTURE_TOP, PICTURE_RIGHT = 66, 10, 14
-BAND_SIDE, BAND_TOP, BAND_H = 10, 85, 38
+BAND_SIDE, BAND_TOP, BAND_H = 10, 88, 30
 TRACK_SIDE, TRACK_UP = 26, 26
 YOKO_BOX, YOKO_FEET = 60, 0.77
 
@@ -91,21 +91,10 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     band_top = BAND_TOP + max(0, h - BASE_H) * 0.5
     box = [BAND_SIDE * k, band_top * k, (w - BAND_SIDE) * k, (band_top + BAND_H) * k]
     d.rounded_rectangle(box, radius=14 * k, fill=ACCENT, outline=INK, width=round(2 * k))
-    # 1行に入ればそのまま。入らなければ、最後の「を」のあとで2行に分ける
-    room = (w - BAND_SIDE * 2 - 28) * k
-    size, lines = 14, [band]
-    if d.textlength(band, font=bold(14)) > room:
-        size = 12
-        cut = band.rfind("を") + 1
-        if cut > 0 and len(band) - cut >= 6:
-            lines = [band[:cut], band[cut:]]
-        widest = max(d.textlength(x, font=bold(12)) for x in lines)
-        if widest > room:
-            size = max(10, 12 * room / widest)
-    step = size * 1.25
-    for i, line in enumerate(lines):
-        y_mid = band_top + BAND_H / 2 + step * (i - (len(lines) - 1) / 2)
-        d.text(((BAND_SIDE + 14) * k, y_mid * k), line, font=bold(size), fill=INK, anchor="lm")
+    # 帯の文は端末の標準フォントで流れる。見本では、流れはじめの位置で帯の右端に切れた形にする
+    inner = Image.new("RGBA", (round((w - BAND_SIDE * 2 - 24) * k), round(BAND_H * k)), (0, 0, 0, 0))
+    ImageDraw.Draw(inner).text((0, inner.height / 2), band, font=bold(15), fill=INK, anchor="lm")
+    img.alpha_composite(inner, (round((BAND_SIDE + 12) * k), round(band_top * k)))
 
     x0, x1, y = TRACK_SIDE, w - TRACK_SIDE, h - TRACK_UP
     xp = x0 + (x1 - x0) * progress

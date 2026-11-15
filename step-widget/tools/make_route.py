@@ -46,7 +46,6 @@ public class Route {
 '''
 
 REST_M = 20000
-LINE_MAX = 16  # 帯の1行に、文字を小さくせずに入る文字数の目安
 
 PREFS = ("北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 "
          "新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 "
@@ -107,8 +106,6 @@ def main():
         cut = p[8].rfind("を") + 1
         if not p[8].endswith("ずらしています") or cut == 0:
             print("帯の文の形がちがう:", p[0], p[8])
-        elif max(cut, len(p[8]) - cut) > LINE_MAX:
-            print("帯の文が長い（%d文字と%d文字）: %s %s" % (cut, len(p[8]) - cut, p[0], p[8]))
     legs = [at[i + 1] - at[i] for i in range(len(at) - 1)]
     print("地点 %d、都道府県 %d、ゴールまで %.0fkm、区間の平均 %.1fkm、最長 %.1fkm、最短 %.1fkm" % (
         len(points), len(set(p[1] for p in points)), at[-1] / 1000,

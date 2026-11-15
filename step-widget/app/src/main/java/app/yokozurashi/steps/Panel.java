@@ -12,7 +12,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 
 /**
- * ウィジェットの絵（地名、累計の距離、きょうの歩数、名物の絵、帯、道のりの線）を1枚の画像に描く。
+ * ウィジェットの絵（地名、累計の距離、きょうの歩数、名物の絵、帯の枠、道のりの線）を1枚の画像に描く。
  * ウィジェットの文字部品は独自フォントを使えないので、手描き数字と Zen Maru Gothic をここでまとめて描く。
  * 寸法は SPEC.md の「仕様書 1: 画面」。基準は 250×172dp で、単位は dp。
  * tools/preview.py が同じ配置で見本の画像を作る。配置を変えたら両方を直す。
@@ -38,8 +38,8 @@ public class Panel {
     private static final float DIGIT_TOP = 31, DIGIT_H = 32, DIGIT_GAP = 3;
     private static final float PICTURE = 66;     // 名物の絵（正方形）
     private static final float PICTURE_TOP = 10, PICTURE_RIGHT = 14;
-    private static final float BAND_SIDE = 10, BAND_TOP = 85, BAND_H = 38;
-    private static final int MIN_SECOND_LINE = 6; // 2行目がこれより短くなるなら、分けずに1行で出す
+    private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
+    private static final float BAND_TEXT_SIDE = 12; // 帯の中の、文字の左右の余白
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
@@ -90,6 +90,11 @@ public class Panel {
         public float bandHeight() {
             return BAND_H * scale;
         }
+
+        /** 帯の中で、文字に使える幅（実寸のdp）。左右の余白は widget_steps.xml の band_text と同じにする。 */
+        public float bandTextRoom() {
+            return bandWidth() - BAND_TEXT_SIDE * 2;
+        }
     }
 
     /** 描く内容。 */
@@ -101,7 +106,6 @@ public class Panel {
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
         public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
-        public String band;    // 帯の文
         public String from;    // 線の左端の地名
         public String to;      // 線の右端の説明（「読谷まで あと12.3km」）
         public float progress; // 区間の進み具合
@@ -193,28 +197,7 @@ public class Panel {
         p.setStrokeWidth(2);
         p.setColor(INK);
         c.drawRoundRect(band, 14, 14, p);
-        // 1行に入ればそのまま。入らなければ、最後の「を」のあとで2行に分ける
-        TextPaint bandPaint = text(bold, 14, INK);
-        float bandRoom = band.width() - 28;
-        int cut = t.band.lastIndexOf('を') + 1;
-        String[] lines = {t.band};
-        if (bandPaint.measureText(t.band) > bandRoom) {
-            bandPaint.setTextSize(12);
-            if (cut > 0 && t.band.length() - cut >= MIN_SECOND_LINE) {
-                lines = new String[]{t.band.substring(0, cut), t.band.substring(cut)};
-            }
-            // それでも入らない行があれば、入るところまで文字を小さくする（10spまで）
-            float widest = 0;
-            for (String line : lines) widest = Math.max(widest, bandPaint.measureText(line));
-            if (widest > bandRoom) bandPaint.setTextSize(Math.max(10, 12 * bandRoom / widest));
-        }
-        Paint.FontMetrics fm = bandPaint.getFontMetrics();
-        float lineStep = bandPaint.getTextSize() * 1.25f;
-        float firstBase = band.centerY() - (fm.ascent + fm.descent) / 2 - lineStep * (lines.length - 1) / 2;
-        for (int i = 0; i < lines.length; i++) {
-            CharSequence line = TextUtils.ellipsize(lines[i], bandPaint, bandRoom, TextUtils.TruncateAt.END);
-            c.drawText(line, 0, line.length(), band.left + 14, firstBase + lineStep * i, bandPaint);
-        }
+        // 帯の中の文は、ここでは描かない。流れる文字の部品（Belt）を上に重ねる
 
         // 道のりの線：左端がいまの地点、右端が次の地点。進んだぶんを太いアクセントカラーで塗る
         float x0 = TRACK_SIDE, x1 = lay.w - TRACK_SIDE, y = lay.trackY;
