@@ -87,7 +87,7 @@ public class StepWidgetProvider extends AppWidgetProvider {
         t.today = StepStore.today(context);
         t.progress = j.progress;
         t.from = j.place;
-        t.to = j.next + "まで あと" + Journey.km(j.toNextM) + "km";
+        t.to = (j.sea ? "船で" : "") + j.next + "まで あと" + Journey.km(j.toNextM) + "km";
         long read = StepStore.readTime(context);
         t.time = read == 0 ? null : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
         String bandText;

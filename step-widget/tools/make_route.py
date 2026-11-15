@@ -15,6 +15,7 @@ HEAD = '''package app.yokozurashi.steps;
 /**
  * 旅の道すじ。tools/make_route.py が tools/route.csv から作る。直接書き換えない。
  * 西の端（与那国島）から東の端（納沙布岬）まで。区間の距離は2地点の直線距離。
+ * ただし海を船で渡る区間（SEA）は、実際の距離にかかわらず決まった短い長さにしてある。
  */
 public class Route {
     /** 地名。 */
@@ -35,6 +36,9 @@ public class Route {
     /** その都道府県の形の絵の名前（pref_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
     public static final String[] PREF_PICTURE = {
 %s    };
+    /** その地点から次の地点までが、海を船で渡る区間か。 */
+    public static final boolean[] SEA = {
+%s    };
     /** 出発点からその地点までの道のり（m）。 */
     public static final int[] AT_M = {
 %s    };
@@ -46,6 +50,7 @@ public class Route {
 '''
 
 REST_M = 20000
+SEA_M = 10000  # 海を船で渡る区間の長さ。実際の距離にかかわらず、この長さで渡れる
 
 PREFS = ("北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 "
          "新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 "
@@ -68,10 +73,11 @@ def load():
             if not line or line.startswith("#"):
                 continue
             cols = line.split(",")
-            name, pref, lat, lon, item, number, text = cols
+            name, pref, lat, lon, item, number, text = cols[:7]
+            assert len(cols) == 7 or cols[7:] == ["船"], line
             code = PREFS.index(pref) + 1
             points.append((name, pref, float(lat), float(lon), item, None,
-                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code, text))
+                           "meibutsu_%02d_%d" % (code, int(number)), "pref_%02d" % code, text, len(cols) > 7))
     names = [p[6] for p in points]
     assert len(set(names)) == len(names), "絵の番号が、同じ都道府県の中で重なっている"
     return points
@@ -88,7 +94,7 @@ def main():
     points = load()
     at = [0]
     for a, b in zip(points, points[1:]):
-        at.append(at[-1] + int(round(distance_m(a, b))))
+        at.append(at[-1] + (SEA_M if a[9] else int(round(distance_m(a, b)))))
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(HEAD % (
             rows([p[0] for p in points], '"%s"', 6),
@@ -97,17 +103,20 @@ def main():
             rows([p[8] for p in points], '"%s"', 1),
             rows([p[6] for p in points], '"%s"', 4),
             rows([p[7] for p in points], '"%s"', 6),
+            rows(["true" if p[9] else "false" for p in points], "%s", 12),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))
     for i, p in enumerate(points):
         leg = (at[i + 1] - at[i]) / 1000 if i + 1 < len(points) else 0
-        print("%3d %-8s %-5s %7.1fkm  次まで %6.1fkm  %s" % (i + 1, p[0], p[1], at[i] / 1000, leg, p[8]))
+        print("%3d %-8s %-5s %7.1fkm  次まで %6.1fkm%s  %s" % (
+            i + 1, p[0], p[1], at[i] / 1000, leg, "（船）" if p[9] else "", p[8]))
     for p in points:
         cut = p[8].rfind("を") + 1
         if not p[8].rstrip(".…。").endswith("ずらしています") or cut == 0:
             print("帯の文の形がちがう:", p[0], p[8])
-    legs = [at[i + 1] - at[i] for i in range(len(at) - 1)]
-    print("地点 %d、都道府県 %d、ゴールまで %.0fkm、区間の平均 %.1fkm、最長 %.1fkm、最短 %.1fkm" % (
+    legs = [at[i + 1] - at[i] for i in range(len(at) - 1) if not points[i][9]]
+    print("船で渡る区間 %d（1つ %dkm）" % (sum(1 for p in points if p[9]), SEA_M / 1000))
+    print("地点 %d、都道府県 %d、ゴールまで %.0fkm、陸の区間の平均 %.1fkm、最長 %.1fkm、最短 %.1fkm" % (
         len(points), len(set(p[1] for p in points)), at[-1] / 1000,
         sum(legs) / len(legs) / 1000, max(legs) / 1000, min(legs) / 1000))
 

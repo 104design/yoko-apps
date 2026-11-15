@@ -12,6 +12,7 @@ public class Journey {
     public String item;      // いまの地点の名物
     public String text;      // 帯に出す文（「オスのシーサーをメスのシーサーの所にずらしています」）
     public String next;      // 次の地点の地名
+    public boolean sea;      // いまの区間が、海を船で渡る区間か
     public long toNextM;     // 次の地点までの残り（m）
     public float progress;   // この区間をどこまで進んだか（0〜1）
     public long distanceM;   // 旅を始めてからの距離（m）
@@ -33,6 +34,7 @@ public class Journey {
         j.prefPicture = Route.PREF_PICTURE[i];
         j.item = Route.ITEM[i];
         j.text = Route.TEXT[i];
+        j.sea = Route.SEA[i];
         // ゴールのあとは、少し進むと出発点に戻って次の周回が始まる
         long from = Route.AT_M[i];
         long to = j.goal ? Route.LAP_M : Route.AT_M[i + 1];
