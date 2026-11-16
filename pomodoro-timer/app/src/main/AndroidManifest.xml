@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.yokozurashi.pomodoro"
-    android:versionCode="58"
-    android:versionName="2.8">
+    android:versionCode="59"
+    android:versionName="2.9">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- タイマーが動いている間、通知を出してアプリを止められないようにする（KillWatchService） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 正確な時刻のアラーム。
          Android 13 以降は USE_EXACT_ALARM（タイマー・目覚まし用。入れた時点で許可され、設定で切れない）。
@@ -61,6 +64,11 @@
         <service
             android:name=".KillWatchService"
             android:exported="false"
-            android:stopWithTask="false" />
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Countdown timer: must ring at the end of each phase while the app is closed" />
+        </service>
     </application>
 </manifest>

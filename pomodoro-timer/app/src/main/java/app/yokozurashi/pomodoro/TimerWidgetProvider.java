@@ -91,6 +91,9 @@ public class TimerWidgetProvider extends AppWidgetProvider {
             for (int id : ids) manager.updateAppWidget(id, views);
         }
         WidgetAnimHelper.sync(context);
+        // every state change passes through here: keep the "running"
+        // notification (and with it the app's right to stay alive) in step
+        KillWatchService.sync(context);
     }
 
     /** Periodic update while running (about every 5 seconds): the next
