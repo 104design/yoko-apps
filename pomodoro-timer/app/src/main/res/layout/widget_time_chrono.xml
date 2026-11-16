@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 動作中の残り時間の予備。端末側で毎秒数える部品なので、アプリからの定期更新が
+     届かないとき（省電力モードなど）でも正しい時間を出す。絵は並べられないので端末の数字になる。 -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chronometer"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:includeFontPadding="false"
+    android:textSize="32dp"
+    android:textStyle="bold"
+    android:textColor="#131417" />

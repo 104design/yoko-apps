@@ -128,7 +128,15 @@ public class TimerWidgetProvider extends AppWidgetProvider {
         long totalSec = s.done ? 0 : (long) Math.ceil(s.remainingNow() / 1000.0);
         String pkg = context.getPackageName();
         views.removeAllViews(R.id.widget_time_slot);
-        if (s.running) {
+        if (s.running && !WidgetAnimHelper.frameDigitsUsable(context)) {
+            // the tick cannot be trusted (battery saver, or frame digits
+            // switched off): let the home screen count by itself
+            RemoteViews chrono = new RemoteViews(pkg, R.layout.widget_time_chrono);
+            long base = android.os.SystemClock.elapsedRealtime() + s.remainingNow();
+            chrono.setChronometerCountDown(R.id.widget_chronometer, true);
+            chrono.setChronometer(R.id.widget_chronometer, base, null, true);
+            views.addView(R.id.widget_time_slot, chrono);
+        } else if (s.running) {
             RemoteViews flipper = new RemoteViews(pkg, R.layout.widget_time_flipper);
             for (int k = 0; k < TIME_FRAMES; k++) {
                 flipper.addView(R.id.widget_time_flipper,

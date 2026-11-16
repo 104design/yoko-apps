@@ -33,6 +33,27 @@ import android.os.Build;
 public class WidgetAnimHelper {
     public static final boolean USE_FLIPPER = true;
 
+    /**
+     * Countdown digits while running, two ways:
+     *  - true: hand-drawn digit frames that the home screen flips, refreshed
+     *    by the tick. Looks right, but depends on the tick arriving. If the
+     *    system holds the tick back, the digits repeat old frames.
+     *  - false: a Chronometer in the system font. Plain, but the home screen
+     *    counts it by itself, so it is always correct.
+     * Even when true, the Chronometer is used while battery saver is on,
+     * because the system then holds back the ticks of background apps.
+     * If stale digits are still seen on the real device, set this to false.
+     */
+    public static final boolean USE_FRAME_DIGITS = true;
+
+    /** True when the tick can be expected to arrive, so frame digits are safe. */
+    static boolean frameDigitsUsable(Context ctx) {
+        if (!USE_FRAME_DIGITS) return false;
+        android.os.PowerManager pm =
+                (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        return pm == null || !pm.isPowerSaveMode();
+    }
+
     public static final String ACTION_FRAME = "app.yokozurashi.pomodoro.WIDGET_FRAME";
     private static final int REQ = 4001;
     private static final long TICK_MS = 5000;
@@ -77,16 +98,20 @@ public class WidgetAnimHelper {
         TimerState s = TimerState.load(ctx);
         if (s.running && hasWidgets(ctx)) {
             long at = System.currentTimeMillis() + nextTickDelay(s.remainingNow());
+            // Deliberately NOT an "allow while idle" alarm. The system gives
+            // each app only a small hourly quota of those for doze and
+            // battery saver, and a tick every 5 seconds used it all up, so
+            // the alarm that ends a phase (AlarmHelper) was held back while
+            // the phone slept. The tick is only cosmetic: it can wait until
+            // the phone wakes (RTC is a non-wakeup alarm and fires then).
             try {
                 if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
-                    am.setAndAllowWhileIdle(AlarmManager.RTC, at, pendingIntent(ctx));
-                } else if (Build.VERSION.SDK_INT >= 23) {
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC, at, pendingIntent(ctx));
+                    am.set(AlarmManager.RTC, at, pendingIntent(ctx));
                 } else {
                     am.setExact(AlarmManager.RTC, at, pendingIntent(ctx));
                 }
             } catch (SecurityException e) {
-                try { am.setAndAllowWhileIdle(AlarmManager.RTC, at, pendingIntent(ctx)); }
+                try { am.set(AlarmManager.RTC, at, pendingIntent(ctx)); }
                 catch (Exception ignored) {}
             }
         } else {
