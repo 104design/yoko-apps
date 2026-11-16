@@ -6,6 +6,7 @@ Panel.java と同じ寸法で描く。実機の描画そのものではないの
 
 使い方: python3 tools/preview.py 出力先.png
 """
+import math
 import os
 import sys
 
@@ -31,7 +32,7 @@ def font(name, size, k):
     return ImageFont.truetype(os.path.join(RES, "font", "zen_maru_%s.ttf" % name), round(size * k))
 
 
-def render(width, height, pref, name, picture, distance_m, today, time, band, dst, progress, frame=1):
+def render(width, height, pref, name, picture, distance_m, today, time, band, dst, progress, frame=1, sea=False):
     scale = max(0.8, min(1.8, min(width / BASE_W, height / BASE_H)))
     w, h = width / scale, height / scale
     k = PX * scale
@@ -99,8 +100,12 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
 
     x0, x1, y = TRACK_SIDE, w - TRACK_SIDE, h - TRACK_UP
     xp = x0 + (x1 - x0) * progress
-    d.line([x0 * k, y * k, xp * k, y * k], fill=ACCENT, width=round(6 * k))
-    d.line([x0 * k, y * k, x1 * k, y * k], fill=INK, width=round(2 * k))
+    def track(a, b):  # 陸はまっすぐ、海は波の形
+        n = max(1, int((b - a) * 2))
+        return [((a + (b - a) * i / n) * k,
+                 (y + (2.2 * math.sin((a + (b - a) * i / n - TRACK_SIDE) / 5) if sea else 0)) * k) for i in range(n + 1)]
+    d.line(track(x0, xp), fill=ACCENT, width=round(6 * k), joint="curve")
+    d.line(track(x0, x1), fill=INK, width=round(2 * k), joint="curve")
     r = 4 * k
     d.ellipse([x0 * k - r, y * k - r, x0 * k + r, y * k + r], fill=INK)
     d.ellipse([x1 * k - r, y * k - r, x1 * k + r, y * k + r], fill=WHITE, outline=INK, width=round(2 * k))
@@ -109,7 +114,19 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     text(name, SIDE, h - 8, bold(10.5), GRAY)
 
     yoko = Image.open(os.path.join(RES, "drawable-nodpi", "yoko_frame_%d.png" % frame)).convert("RGBA")
-    size = round(YOKO_BOX * k)
+    if sea:
+        # 船を線の上に置き、よこずらしを小さくして前の甲板に乗せる（寸法は Panel.java の SHIP_* と同じ）
+        box, bottom, deck, bow, sink, small = 56, 245, 182, 280, 5, 32
+        left = max(2, min(w - box - 2, xp - box / 2))
+        top = y + sink - bottom * box / 285
+        ship = Image.open(os.path.join(RES, "drawable-nodpi", "ship.png")).convert("RGBA")
+        ship = ship.resize((round(box * k), round(box * k)), Image.LANCZOS)
+        img.alpha_composite(ship, (round(left * k), round(top * k)))
+        yoko = yoko.resize((round(small * k), round(small * k)), Image.LANCZOS)
+        img.alpha_composite(yoko, (round((left + bow * box / 285 - small) * k),
+                                   round((top + deck * box / 285 - small * YOKO_FEET) * k)))
+        yoko = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    size = round(YOKO_BOX * k) if not sea else 1
     yoko = yoko.resize((size, size), Image.LANCZOS)
     img.alpha_composite(yoko, (max(0, min(img.width - size, round((xp - YOKO_BOX / 2) * k))),
                                round((y - YOKO_BOX * YOKO_FEET + 1) * k)))
@@ -126,8 +143,8 @@ def main():
     shots = [
         render(250, 172, "沖縄県", "那覇", "meibutsu_47_5", 541000, 6543, "12:34", "オスのシーサーをメスのシーサーの所にずらしています",
                "読谷まで あと11.5km", 0.47, 1),
-        render(250, 172, "沖縄県", "与那国島", "meibutsu_47_1", 0, 0, None, "タップして歩数の読み取りを許可",
-               "西表島まで あと84.4km", 0.0, 4),
+        render(250, 172, "沖縄県", "石垣島", "meibutsu_47_3", 36800, 3210, "9:41", "こぼれた星の砂を小びんの中にずらしています....",
+               "船で多良間島まで あと3.2km", 0.68, 6, sea=True),
         render(250, 172, "岐阜県", "白川郷", "meibutsu_21_2", 12987300, 12045, "8:05", "ずれた合掌造りの屋根を元の位置にずらしています",
                "郡上まで あと19.9km", 0.65, 6),
         render(315, 260, "静岡県", "富士山", "meibutsu_22_3", 4945800, 8210, "18:20", "富士山にかかる雲を横のほうにずらしています",

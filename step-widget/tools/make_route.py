@@ -112,7 +112,9 @@ def main():
             i + 1, p[0], p[1], at[i] / 1000, leg, "（船）" if p[9] else "", p[8]))
     for p in points:
         cut = p[8].rfind("を") + 1
-        if not p[8].rstrip(".…。").endswith("ずらしています") or cut == 0:
+        body = p[8].rstrip(".…。")
+        shifts_letter = "一文字ずらして" in body and body.endswith("にしています")  # 言葉を一文字ずらす型
+        if not (body.endswith("ずらしています") or shifts_letter) or cut == 0:
             print("帯の文の形がちがう:", p[0], p[8])
     legs = [at[i + 1] - at[i] for i in range(len(at) - 1) if not points[i][9]]
     print("船で渡る区間 %d（1つ %dkm）" % (sum(1 for p in points if p[9]), SEA_M / 1000))

@@ -86,6 +86,7 @@ public class StepWidgetProvider extends AppWidgetProvider {
         t.distanceM = j.distanceM;
         t.today = StepStore.today(context);
         t.progress = j.progress;
+        t.sea = j.sea;
         t.from = j.place;
         t.to = (j.sea ? "船で" : "") + j.next + "まで あと" + Journey.km(j.toNextM) + "km";
         long read = StepStore.readTime(context);
@@ -103,10 +104,10 @@ public class StepWidgetProvider extends AppWidgetProvider {
         views.setImageViewBitmap(R.id.panel, Panel.render(context, lay, pxPerDp, t));
 
         // よこずらしを、線の上の進んだ位置に置く。枠の余白で位置と大きさを決める
-        int size = Math.round(lay.yokoSize() * density);
+        int size = Math.round(lay.yokoSize(j.sea) * density);
         int wPx = Math.round(w * density), hPx = Math.round(h * density);
-        int left = clamp(Math.round(lay.yokoLeft(j.progress) * density), 0, wPx - size);
-        int top = clamp(Math.round(lay.yokoTop() * density), 0, hPx - size);
+        int left = clamp(Math.round(lay.yokoLeft(j.progress, j.sea) * density), 0, wPx - size);
+        int top = clamp(Math.round(lay.yokoTop(j.sea) * density), 0, hPx - size);
         int right = Math.max(0, wPx - left - size);
         int bottom = Math.max(0, hPx - top - size);
         views.setViewPadding(R.id.yoko_box, left, top, right, bottom);
