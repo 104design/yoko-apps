@@ -40,8 +40,10 @@ public class WidgetAnimHelper {
      *    system holds the tick back, the digits repeat old frames.
      *  - false: a Chronometer in the system font. Plain, but the home screen
      *    counts it by itself, so it is always correct.
-     * Even when true, the Chronometer is used while battery saver is on,
-     * because the system then holds back the ticks of background apps.
+     * Even when true, the Chronometer is used whenever the tick cannot be
+     * trusted: while battery saver is on (the system then holds back the
+     * ticks of background apps), and when exact alarms are not permitted
+     * (the tick would then arrive minutes late).
      * If stale digits are still seen on the real device, set this to false.
      */
     public static final boolean USE_FRAME_DIGITS = true;
@@ -51,7 +53,10 @@ public class WidgetAnimHelper {
         if (!USE_FRAME_DIGITS) return false;
         android.os.PowerManager pm =
                 (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
-        return pm == null || !pm.isPowerSaveMode();
+        if (pm != null && pm.isPowerSaveMode()) return false;
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return false;
+        return Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms();
     }
 
     public static final String ACTION_FRAME = "app.yokozurashi.pomodoro.WIDGET_FRAME";

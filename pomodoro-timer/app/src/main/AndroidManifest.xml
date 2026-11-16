@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.yokozurashi.pomodoro"
-    android:versionCode="57"
-    android:versionName="2.7">
+    android:versionCode="58"
+    android:versionName="2.8">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 正確な時刻のアラーム。
+         Android 13 以降は USE_EXACT_ALARM（タイマー・目覚まし用。入れた時点で許可され、設定で切れない）。
+         Android 12 は SCHEDULE_EXACT_ALARM（設定の「アラームとリマインダー」で許可が要る）。
+         許可がないと終了のアラームが数分遅れ、ウィジェットの定期更新も届かない。 -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
 
     <application
         android:label="@string/app_name"
