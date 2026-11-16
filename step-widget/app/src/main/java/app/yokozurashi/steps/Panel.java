@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.text.TextPaint;
@@ -42,9 +43,19 @@ public class Panel {
     private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
     private static final float BAND_TEXT_SIDE = 12; // 帯の中の、文字の左右の余白
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
+    private static final float WAVE_H = 2.2f, WAVE_LEN = 5; // 海の線の、波の高さと細かさ
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
     private static final float YOKO_FEET = 0.77f; // 枠の上端から足元までの割合
+
+    // 船（res/drawable-nodpi/ship.png）。海を船で渡る区間で、よこずらしを小さくして甲板に乗せる
+    private static final float SHIP_BOX = 56;      // 船の絵の枠（正方形）
+    private static final float SHIP_PX = 285;      // 船の絵の一辺（px）。以下の3つは、絵の中の位置（px）
+    private static final float SHIP_BOTTOM = 245;  // 船底
+    private static final float SHIP_DECK = 182;    // よこずらしが乗る、前の甲板
+    private static final float SHIP_BOW = 280;     // へさきの右端。よこずらしの枠の右端をここに合わせる
+    private static final float SHIP_SINK = 5;      // 船底を、線より下へ沈める量
+    private static final float YOKO_ON_SHIP = 32;  // 船に乗っているときの、よこずらしの枠
 
     /** ウィジェットの大きさから決まる配置。 */
     public static class Layout {
@@ -62,17 +73,29 @@ public class Panel {
         }
 
         /** よこずらしの枠の左上（実寸のdp）。progress は区間の進み具合（0〜1）。 */
-        public float yokoLeft(float progress) {
+        public float yokoLeft(float progress, boolean sea) {
+            if (sea) return (shipLeft(progress) + SHIP_BOW * SHIP_BOX / SHIP_PX - YOKO_ON_SHIP) * scale;
             float x = TRACK_SIDE + (w - TRACK_SIDE * 2) * progress;
             return (x - YOKO_BOX / 2) * scale;
         }
 
-        public float yokoTop() {
+        public float yokoTop(boolean sea) {
+            if (sea) return (shipTop() + SHIP_DECK * SHIP_BOX / SHIP_PX - YOKO_ON_SHIP * YOKO_FEET) * scale;
             return (trackY - YOKO_BOX * YOKO_FEET + 1) * scale;
         }
 
-        public float yokoSize() {
-            return YOKO_BOX * scale;
+        public float yokoSize(boolean sea) {
+            return (sea ? YOKO_ON_SHIP : YOKO_BOX) * scale;
+        }
+
+        /** 船の絵の枠の左上（拡大率1のdp）。船は進んだ割合の位置に、まん中を合わせて置く。 */
+        float shipLeft(float progress) {
+            float x = TRACK_SIDE + (w - TRACK_SIDE * 2) * progress;
+            return Math.max(2, Math.min(w - SHIP_BOX - 2, x - SHIP_BOX / 2));
+        }
+
+        float shipTop() {
+            return trackY + SHIP_SINK - SHIP_BOTTOM * SHIP_BOX / SHIP_PX;
         }
 
         /** 帯の位置と大きさ（実寸のdp）。帯のタップを受ける枠を、ここに重ねる。 */
@@ -110,6 +133,7 @@ public class Panel {
         public String from;    // 線の左端の地名
         public String to;      // 線の右端の説明（「読谷まで あと12.3km」）
         public float progress; // 区間の進み具合
+        public boolean sea;    // 海を船で渡る区間か
     }
 
     /**
@@ -205,12 +229,13 @@ public class Panel {
         float x0 = TRACK_SIDE, x1 = lay.w - TRACK_SIDE, y = lay.trackY;
         float xp = x0 + (x1 - x0) * Math.max(0, Math.min(1, t.progress));
         p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
         p.setColor(ACCENT);
         p.setStrokeWidth(6);
-        c.drawLine(x0, y, xp, y, p);
+        c.drawPath(track(x0, xp, y, t.sea), p);
         p.setColor(INK);
         p.setStrokeWidth(2);
-        c.drawLine(x0, y, x1, y, p);
+        c.drawPath(track(x0, x1, y, t.sea), p);
         p.setStyle(Paint.Style.FILL);
         c.drawCircle(x0, y, 4, p);
         p.setColor(0xFFFFFFFF);
@@ -218,6 +243,14 @@ public class Panel {
         p.setStyle(Paint.Style.STROKE);
         p.setColor(INK);
         c.drawCircle(x1, y, 4, p);
+
+        // 船の区間では、線の上に船を置く。よこずらしは、この甲板の上に重ねる
+        if (t.sea) {
+            Bitmap ship = BitmapFactory.decodeResource(res, R.drawable.ship);
+            float left = lay.shipLeft(t.progress), top = lay.shipTop();
+            c.drawBitmap(ship, null, new RectF(left, top, left + SHIP_BOX, top + SHIP_BOX), img);
+            ship.recycle();
+        }
 
         // 線の下：左に地点の名前、右に次の地点と残りの距離
         TextPaint small = text(bold, 10.5f, GRAY);
@@ -227,6 +260,21 @@ public class Panel {
                 Math.max(0, right - toW - 10 - SIDE), TextUtils.TruncateAt.END);
         c.drawText(from, 0, from.length(), SIDE, lay.h - 8, small);
         return bmp;
+    }
+
+    /** 道のりの線。陸はまっすぐ、海は波の形。 */
+    private static Path track(float from, float to, float y, boolean sea) {
+        Path path = new Path();
+        path.moveTo(from, y);
+        if (!sea) {
+            path.lineTo(to, y);
+            return path;
+        }
+        for (float x = from; x < to; x += 0.5f) {
+            path.lineTo(x, y + WAVE_H * (float) Math.sin((x - TRACK_SIDE) / WAVE_LEN));
+        }
+        path.lineTo(to, y + WAVE_H * (float) Math.sin((to - TRACK_SIDE) / WAVE_LEN));
+        return path;
     }
 
     /** 手描き数字を並べたときの幅。 */
