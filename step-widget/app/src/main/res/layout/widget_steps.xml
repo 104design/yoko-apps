@@ -30,83 +30,144 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <!-- 帯のタップを受ける枠と、帯の中の文。位置と大きさは、外の枠の余白（padding）で帯に合わせる -->
-    <FrameLayout
-        android:id="@+id/band_box"
+    <!-- 帯のタップを受ける枠と、帯の中の文。
+         位置と大きさは、ウィジェット全体に対する割合で決める（StepWidgetProvider.place）。
+         入れ子の4つの枠の weightSum を変えると、いちばん内側の枠が「左から何割・幅何割・上から何割・高さ何割」に来る。
+         画素の数で決めると、端末が知らせる大きさと実際の大きさが食い違う端末で位置がずれる -->
+    <LinearLayout
+        android:id="@+id/band_h1"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <FrameLayout
-            android:id="@+id/tap_band"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <!-- 帯の中の文。中身は Belt が入れる。左右の余白は Panel.BAND_TEXT_SIDE と同じにする -->
-            <FrameLayout
-                android:id="@+id/band_text"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
-                android:layout_marginTop="2dp"
-                android:layout_marginBottom="2dp" />
-        </FrameLayout>
-    </FrameLayout>
-
-    <!-- よこずらし。位置と大きさは、この枠の余白（padding）で決める。StepWidgetProvider が入れる -->
-    <FrameLayout
-        android:id="@+id/yoko_box"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <ViewFlipper
-            android:id="@+id/yoko_flipper"
-            android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+            android:orientation="horizontal">
+        <LinearLayout
+            android:id="@+id/band_h2"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:autoStart="true"
-            android:flipInterval="40">
-            <ImageView
-                android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:gravity="right"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:id="@+id/band_v1"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_1" />
-            <ImageView
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/band_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:gravity="bottom"
+                    android:orientation="vertical">
+            <FrameLayout
+                android:id="@+id/tap_band"
                 android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+                <!-- 帯の中の文。中身は Belt が入れる。左右の余白は Panel.BAND_TEXT_SIDE と同じにする -->
+                <FrameLayout
+                    android:id="@+id/band_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="12dp"
+                    android:layout_marginRight="12dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp" />
+            </FrameLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- よこずらし。
+         位置と大きさは、ウィジェット全体に対する割合で決める（StepWidgetProvider.place）。
+         入れ子の4つの枠の weightSum を変えると、いちばん内側の枠が「左から何割・幅何割・上から何割・高さ何割」に来る。
+         画素の数で決めると、端末が知らせる大きさと実際の大きさが食い違う端末で位置がずれる -->
+    <LinearLayout
+        android:id="@+id/yoko_h1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+            android:orientation="horizontal">
+        <LinearLayout
+            android:id="@+id/yoko_h2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="right"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:id="@+id/yoko_v1"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_2" />
-            <ImageView
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/yoko_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:gravity="bottom"
+                    android:orientation="vertical">
+            <ViewFlipper
+                android:id="@+id/yoko_flipper"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_3" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_4" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_5" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_6" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_7" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_8" />
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="fitCenter"
-                android:src="@drawable/yoko_frame_9" />
-        </ViewFlipper>
-    </FrameLayout>
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:autoStart="true"
+                android:flipInterval="40">
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_1" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_2" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_3" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_4" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_5" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_6" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_7" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_8" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/yoko_frame_9" />
+            </ViewFlipper>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
 </FrameLayout>

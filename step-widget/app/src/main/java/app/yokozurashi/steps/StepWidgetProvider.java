@@ -103,14 +103,10 @@ public class StepWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_steps);
         views.setImageViewBitmap(R.id.panel, Panel.render(context, lay, pxPerDp, t));
 
-        // よこずらしを、線の上の進んだ位置に置く。枠の余白で位置と大きさを決める
-        int size = Math.round(lay.yokoSize(j.sea) * density);
-        int wPx = Math.round(w * density), hPx = Math.round(h * density);
-        int left = clamp(Math.round(lay.yokoLeft(j.progress, j.sea) * density), 0, wPx - size);
-        int top = clamp(Math.round(lay.yokoTop(j.sea) * density), 0, hPx - size);
-        int right = Math.max(0, wPx - left - size);
-        int bottom = Math.max(0, hPx - top - size);
-        views.setViewPadding(R.id.yoko_box, left, top, right, bottom);
+        // よこずらしを、線の上の進んだ位置（船の区間では甲板の上）に置く
+        place(views, R.id.yoko_h1, R.id.yoko_h2, R.id.yoko_v1, R.id.yoko_v2,
+                lay.yokoLeft(j.progress, j.sea) / w, lay.yokoSize(j.sea) / w,
+                lay.yokoTop(j.sea) / h, lay.yokoSize(j.sea) / h);
 
         PendingIntent app = PendingIntent.getActivity(context, 1,
                 new Intent(context, MainActivity.class),
@@ -125,11 +121,8 @@ public class StepWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.tap_bottom, canReread ? reread : app);
 
         // 帯をタップしたら、いまずらしている名物をブラウザで検索する
-        int bandLeft = clamp(Math.round(lay.bandLeft() * density), 0, wPx);
-        int bandTop = clamp(Math.round(lay.bandTopDp() * density), 0, hPx);
-        views.setViewPadding(R.id.band_box, bandLeft, bandTop,
-                Math.max(0, wPx - bandLeft - Math.round(lay.bandWidth() * density)),
-                Math.max(0, hPx - bandTop - Math.round(lay.bandHeight() * density)));
+        place(views, R.id.band_h1, R.id.band_h2, R.id.band_v1, R.id.band_v2,
+                lay.bandLeft() / w, lay.bandWidth() / w, lay.bandTopDp() / h, lay.bandHeight() / h);
         PendingIntent bandTap = app;
         if (status == StepReader.OK) {
             Intent search = new Intent(Intent.ACTION_VIEW, searchUrl(j));
@@ -150,7 +143,22 @@ public class StepWidgetProvider extends AppWidgetProvider {
         return Uri.parse("https://www.google.com/search?q=" + Uri.encode(j.item + " " + j.pref));
     }
 
-    private static int clamp(int v, int lo, int hi) {
-        return Math.max(lo, Math.min(Math.max(lo, hi), v));
+    /**
+     * 入れ子の4つの枠（widget_steps.xml）の weightSum を変えて、いちばん内側の枠を置く。
+     * left・width は幅に対する割合、top・height は高さに対する割合（0〜1）。
+     * 割合で決めるので、端末が知らせる大きさと実際の大きさが食い違っていても、下の絵とずれない。
+     */
+    private static void place(RemoteViews views, int h1, int h2, int v1, int v2,
+                              float left, float width, float top, float height) {
+        width = Math.max(0.01f, Math.min(1, width));
+        height = Math.max(0.01f, Math.min(1, height));
+        float right = Math.max(width, Math.min(1, left + width));   // 枠の右端
+        float bottom = Math.max(height, Math.min(1, top + height)); // 枠の下端
+        views.setFloat(h1, "setWeightSum", 1 / right);
+        views.setFloat(h2, "setWeightSum", right / width);
+        views.setFloat(v1, "setWeightSum", 1 / bottom);
+        views.setFloat(v2, "setWeightSum", bottom / height);
+        // weightSum を変えただけでは並べ直しが起きないので、並べ直しを起こす命令も送る
+        for (int id : new int[]{h1, h2, v1, v2}) views.setInt(id, "setMinimumHeight", 0);
     }
 }
