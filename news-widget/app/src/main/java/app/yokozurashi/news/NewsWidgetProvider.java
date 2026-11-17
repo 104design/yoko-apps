@@ -24,6 +24,7 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         String action = intent.getAction();
         if (ACTION_SHUFFLE.equals(action)) {
             NewsStore.next(context);
+            CharacterStore.change(context);
             updateNews(context);
         } else if (ACTION_DATE_TICK.equals(action)) {
             updateAll(context);
@@ -77,6 +78,7 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         WidgetLayout layout = canResize ? new WidgetLayout(w, h) : new WidgetLayout(380, 180);
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_news);
+        views.setImageViewResource(R.id.character, CharacterStore.drawable(context));
         if (canResize) {
             views.setViewLayoutWidth(R.id.character, layout.charWidth, TypedValue.COMPLEX_UNIT_DIP);
             views.setViewLayoutHeight(R.id.character, layout.charHeight, TypedValue.COMPLEX_UNIT_DIP);
@@ -125,12 +127,13 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         return place == null ? "現在地" : place;
     }
 
-    /** ニュースの帯だけを差し替える。よこずらしのアニメや日付は触らない。 */
+    /** ニュースの帯と女の子の絵だけを差し替える。よこずらしのアニメや日付は触らない。 */
     private static void updateNews(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         int[] ids = ids(context, manager);
         if (ids == null || ids.length == 0) return;
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_news);
+        views.setImageViewResource(R.id.character, CharacterStore.drawable(context));
         bindNews(context, views);
         manager.partiallyUpdateAppWidget(ids, views);
     }

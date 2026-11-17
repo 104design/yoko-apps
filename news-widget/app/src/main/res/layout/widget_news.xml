@@ -17,7 +17,7 @@
         android:layout_marginRight="-38dp"
         android:layout_marginBottom="-10dp"
         android:scaleType="fitXY"
-        android:src="@drawable/character" />
+        android:src="@drawable/character_1" />
 
     <!-- 日付と天気。DateBlock が1枚の画像として描く -->
     <ImageView
