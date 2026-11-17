@@ -15,6 +15,8 @@ public class RefreshJob extends JobService {
 
     @Override
     public boolean onStartJob(final JobParameters params) {
+        // 定期更新のたびに、女の子の表情も変える
+        if (params.getJobId() == JOB_PERIODIC) CharacterStore.change(this);
         Refresher.runAsync(this, false, new Runnable() {
             @Override
             public void run() {
