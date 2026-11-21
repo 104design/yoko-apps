@@ -11,12 +11,11 @@ import android.widget.RemoteViews;
  * 見出しの長さに合う幅の「ベルト」（tools/make_belts.py が作るレイアウト）を選び、文字を入れる。
  */
 public class NewsBelt {
-    // tools/make_belts.py の WIDTHS と同じにする（dp）
-    private static final int[] WIDTHS = {300, 450, 600, 800, 1000, 1300};
-    private static final int[] LAYOUTS = {
-            R.layout.belt_300, R.layout.belt_450, R.layout.belt_600,
-            R.layout.belt_800, R.layout.belt_1000, R.layout.belt_1300};
-    private static final float GAP_DP = 48;      // 文の終わりと、次に入ってくる文の頭のあいだ
+    // ベルトの幅の一覧は tools/make_belts.py が BeltSizes に書き出す
+    private static final int[] WIDTHS = BeltSizes.WIDTHS;
+    private static final int[] LAYOUTS = BeltSizes.LAYOUTS;
+    // 速さ毎秒40dpで0.8秒。実際のすきまは、ベルトの幅の刻みぶん（最大20dp、0.5秒）長くなることがある
+    private static final float GAP_DP = 32;      // 文の終わりと、次に入ってくる文の頭のあいだ
     private static final float TEXT_SP = 15;
 
     /** 右から左へ流れつづける帯。 */
