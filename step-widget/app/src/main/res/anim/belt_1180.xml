@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tools/make_belts.py が作る。直接書き換えない -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/linear_interpolator"
+    android:fillAfter="true"
+    android:fromXDelta="0%" android:toXDelta="-50%" android:duration="29500" />
