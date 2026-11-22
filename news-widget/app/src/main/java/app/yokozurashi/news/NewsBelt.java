@@ -40,6 +40,9 @@ public class NewsBelt {
         belt.setTextViewText(R.id.belt_text_a2, text);
         belt.setTextViewText(R.id.belt_text_b1, text);
         belt.setTextViewText(R.id.belt_text_b2, text);
+        // ViewFlipper は、はじめの列を切り替えの間隔（ベルトの幅÷速さ、10秒前後）ぶん止めたまま見せてから
+        // 動きはじめる。表示中の列を選び直すと、はじめの列のアニメがすぐ始まる（animateFirstView="true"）
+        belt.setDisplayedChild(R.id.belt_flipper, 0);
         return belt;
     }
 
