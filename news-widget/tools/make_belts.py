@@ -7,6 +7,8 @@ TextView の marquee はフォーカスを失うと止まり、ウィジェッ�
 しくみ：幅 W の同じ文字を2つ横に並べた列（幅 2W）を、W のぶんだけ左へ動かす。
 動かし終えたとき、2つ目の文字が1つ目のあった位置に来ている。
 そこで同じ中身の次の列に切り替えると、つなぎ目なく流れつづける。
+ViewFlipper は、はじめの列を切り替えの間隔ぶん止めたまま見せてから動きはじめる。
+そのため NewsBeltが、置いた直後に setDisplayedChild(0) を送ってアニメを始める。
 幅ごとに1組（レイアウト1つ、アニメ1つ）を作り、見出しの長さに合う幅を NewsBelt が選ぶ。
 選んだ幅と文の長さの差が、文の終わりから次の文の頭までのすきま（待ち時間）になる。
 幅の刻みを細かくするほど、すきまは NewsBelt.GAP_DP に近づく。
@@ -53,6 +55,7 @@ for w in WIDTHS:
         f.write('<?xml version="1.0" encoding="utf-8"?>\n'
                 '<!-- tools/make_belts.py が作る。直接書き換えない -->\n'
                 '<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"\n'
+                '    android:id="@+id/belt_flipper"\n'
                 '    android:layout_width="match_parent"\n'
                 '    android:layout_height="match_parent"\n'
                 '    android:autoStart="true"\n'
