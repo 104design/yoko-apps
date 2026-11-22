@@ -4,11 +4,14 @@
 TextView の marquee はフォーカスを失うと止まり、ウィジェットからは戻せない。
 そこで ViewFlipper のアニメで流す。
 
-しくみ：幅 W の同じ文字を2つ横に並べた列（幅 2W）を、W のぶんだけ左へ動かす。
-動かし終えたとき、2つ目の文字が1つ目のあった位置に来ている。
-そこで同じ中身の次の列に切り替えると、つなぎ目なく流れつづける。
-ViewFlipper は、はじめの列を切り替えの間隔ぶん止めたまま見せてから動きはじめる。
-そのため NewsBeltが、置いた直後に setDisplayedChild(0) を送ってアニメを始める。
+しくみ：幅 W の同じ文字を2つ横に並べた列（幅 2W）を、W のぶんだけ左へ動かすアニメを、止めずに繰り返す。
+動かし終えたとき、2つ目の文字が1つ目のあった位置に来ているので、頭に戻してもつなぎ目は見えない。
+アニメは ViewFlipper の「はじめの列を出すときのアニメ」として付け、置いた直後に
+NewsBelt が setDisplayedChild(0) を送って始める。
+
+列を切り替えて流しつづける前の作りをやめたのは、ほかのアプリからホーム画面に戻ったとき、
+ViewFlipper が切り替えの間隔（10秒前後）ぶん止まったままになるため。
+繰り返すアニメは時計の時刻で進むので、ホーム画面が隠れていたあいだも進んだことになり、戻ってもそのまま流れつづける。
 幅ごとに1組（レイアウト1つ、アニメ1つ）を作り、見出しの長さに合う幅を NewsBelt が選ぶ。
 選んだ幅と文の長さの差が、文の終わりから次の文の頭までのすきま（待ち時間）になる。
 幅の刻みを細かくするほど、すきまは NewsBelt.GAP_DP に近づく。
@@ -50,7 +53,7 @@ for folder in ("layout", "anim"):
 
 for w in WIDTHS:
     ms = int(w / SPEED * 1000)
-    rows = "".join(ROW % (w * 2, TEXT % (r + "1", w) + TEXT % (r + "2", w)) for r in "ab")
+    rows = ROW % (w * 2, TEXT % ("a1", w) + TEXT % ("a2", w))
     with open(os.path.join(RES, "layout", "belt_%d.xml" % w), "w") as f:
         f.write('<?xml version="1.0" encoding="utf-8"?>\n'
                 '<!-- tools/make_belts.py が作る。直接書き換えない -->\n'
@@ -58,17 +61,17 @@ for w in WIDTHS:
                 '    android:id="@+id/belt_flipper"\n'
                 '    android:layout_width="match_parent"\n'
                 '    android:layout_height="match_parent"\n'
-                '    android:autoStart="true"\n'
+                '    android:autoStart="false"\n'
                 '    android:animateFirstView="true"\n'
-                '    android:flipInterval="%d"\n'
-                '    android:inAnimation="@anim/belt_%d">\n' % (ms, w)
+                '    android:inAnimation="@anim/belt_%d">\n' % w
                 + rows + '</ViewFlipper>\n')
     with open(os.path.join(RES, "anim", "belt_%d.xml" % w), "w") as f:
         f.write('<?xml version="1.0" encoding="utf-8"?>\n'
                 '<!-- tools/make_belts.py が作る。直接書き換えない -->\n'
                 '<translate xmlns:android="http://schemas.android.com/apk/res/android"\n'
                 '    android:interpolator="@android:anim/linear_interpolator"\n'
-                '    android:fillAfter="true"\n'
+                '    android:repeatCount="infinite"\n'
+                '    android:repeatMode="restart"\n'
                 '    android:fromXDelta="0%%" android:toXDelta="-50%%" android:duration="%d" />\n' % ms)
 
 with open(JAVA, "w", encoding="utf-8") as f:
