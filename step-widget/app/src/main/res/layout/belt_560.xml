@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- tools/make_belts.py が作る。直接書き換えない -->
 <ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/belt_flipper"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:autoStart="true"
