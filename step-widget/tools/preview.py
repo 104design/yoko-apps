@@ -86,9 +86,15 @@ def render(width, height, pref, name, picture, distance_m, today, time, band, ds
     sx += d.textlength("きょう", font=bold(10)) / k + 4
     today_text = "{:,}歩".format(today)
     text(today_text, sx, bottom + 17, black(13), INK)
-    sx += d.textlength(today_text, font=black(13)) / k + 7
-    if time and sx + d.textlength(time, font=bold(10)) / k <= SIDE + left_room:
-        text(time, sx, bottom + 17, bold(10), GRAY)
+    sx += d.textlength(today_text, font=black(13)) / k + 6
+    # 更新マーク（Panel.drawReload と同じ形）
+    rr = 10
+    bx, by = sx + rr, bottom + 12.5
+    d.ellipse([(bx - rr) * k, (by - rr) * k, (bx + rr) * k, (by + rr) * k], fill=ACCENT_PALE)
+    r = rr * 0.52
+    d.arc([(bx - r) * k, (by - r) * k, (bx + r) * k, (by + r) * k], 40, 330, fill=INK, width=round(1.6 * k))
+    ax, ay = bx + r * math.cos(math.radians(40)), by + r * math.sin(math.radians(40))
+    d.polygon([(ax * k, (ay - 3.2) * k), ((ax + 3.2) * k, (ay + 0.6) * k), ((ax - 2.4) * k, (ay + 1.6) * k)], fill=INK)
 
     band_top = BAND_TOP + max(0, h - BASE_H) * 0.5
     box = [BAND_SIDE * k, band_top * k, (w - BAND_SIDE) * k, (band_top + BAND_H) * k]

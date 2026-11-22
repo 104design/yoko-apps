@@ -10,9 +10,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 /** よこめぐりのウィジェット。 */
 public class StepWidgetProvider extends AppWidgetProvider {
@@ -89,8 +86,6 @@ public class StepWidgetProvider extends AppWidgetProvider {
         t.sea = j.sea;
         t.from = j.place;
         t.to = (j.sea ? "船で" : "") + j.next + "まで あと" + Journey.km(j.toNextM) + "km";
-        long read = StepStore.readTime(context);
-        t.time = read == 0 ? null : new SimpleDateFormat("H:mm", Locale.JAPAN).format(new Date(read));
         String bandText;
         if (status == StepReader.UNSUPPORTED) {
             bandText = "Android 14 以上が必要です";
@@ -111,14 +106,22 @@ public class StepWidgetProvider extends AppWidgetProvider {
         PendingIntent app = PendingIntent.getActivity(context, 1,
                 new Intent(context, MainActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Intent refresh = new Intent(context, StepWidgetProvider.class);
-        refresh.setAction(ACTION_REFRESH);
-        PendingIntent reread = PendingIntent.getBroadcast(context, 2, refresh,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        views.setOnClickPendingIntent(R.id.tap_top, app);
-        // 裏から読めないとき（許可がまだ、など）は、下半分もアプリを開く。アプリを開けば読める
-        boolean canReread = status == StepReader.OK && StepReader.canReadInBackground(context);
-        views.setOnClickPendingIntent(R.id.tap_bottom, canReread ? reread : app);
+        // 帯と更新マーク以外は、どこを押してもアプリを開く
+        views.setOnClickPendingIntent(R.id.tap_all, app);
+
+        // 更新マークを押したら、見えない画面を一瞬開いて歩数を読む（ReloadActivity）。
+        // 歩数の読み取りが未許可のときは、アプリを開いて許可を求められるようにする
+        place(views, R.id.reload_h1, R.id.reload_h2, R.id.reload_v1, R.id.reload_v2,
+                (t.reloadX - Panel.RELOAD_TAP / 2) / lay.w, Panel.RELOAD_TAP / lay.w,
+                (t.reloadY - Panel.RELOAD_TAP / 2) / lay.h, Panel.RELOAD_TAP / lay.h);
+        PendingIntent reload = app;
+        if (status == StepReader.OK) {
+            Intent open = new Intent(context, ReloadActivity.class);
+            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            reload = PendingIntent.getActivity(context, 5, open,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        views.setOnClickPendingIntent(R.id.tap_reload, reload);
 
         // 帯をタップしたら、いまずらしている名物をブラウザで検索する
         place(views, R.id.band_h1, R.id.band_h2, R.id.band_v1, R.id.band_v2,
