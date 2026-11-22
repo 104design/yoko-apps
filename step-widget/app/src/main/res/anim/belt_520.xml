@@ -2,5 +2,6 @@
 <!-- tools/make_belts.py が作る。直接書き換えない -->
 <translate xmlns:android="http://schemas.android.com/apk/res/android"
     android:interpolator="@android:anim/linear_interpolator"
-    android:fillAfter="true"
+    android:repeatCount="infinite"
+    android:repeatMode="restart"
     android:fromXDelta="0%" android:toXDelta="-50%" android:duration="13000" />
