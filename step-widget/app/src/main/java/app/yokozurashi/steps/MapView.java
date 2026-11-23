@@ -1,5 +1,6 @@
 package app.yokozurashi.steps;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -42,6 +43,8 @@ public class MapView extends View {
 
     private static final float PIN_H = 17, PIN_PICKED_H = 26, PIN_NOW_H = 28; // ピンの高さ（dp）
     private static final float CLUSTER_CELL = 34; // この大きさ（dp）のます目に入るピンを1つにまとめる
+    private static final float PINCH_GAIN = 2;    // ピンチの効き。2 なら指の動きの2倍の勢いで拡大・縮小する
+    private static final long MOVE_MS = 350;      // 現在地ボタンで、開いたときの表示へ戻るまでの時間
     private static final float MIN_SPAN = 2.2f;   // はじめに見せる範囲の、いちばん狭い高さ（緯度の度）
     // 線の揺らし方（dp）。揺れの大きさ、揺れの波の長さ、点を打ち直す間隔
     private static final float WOBBLE_AMP = 1.3f, WOBBLE_LEN = 14, WOBBLE_STEP = 4;
@@ -100,7 +103,8 @@ public class MapView extends View {
         scaler = new ScaleGestureDetector(ctx, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector d) {
-                zoom(d.getScaleFactor(), d.getFocusX(), d.getFocusY());
+                // 指の動きより大きく効かせる（同じ動きで、拡大・縮小の度合いが PINCH_GAIN 乗になる）
+                zoom((float) Math.pow(d.getScaleFactor(), PINCH_GAIN), d.getFocusX(), d.getFocusY());
                 return true;
             }
         });
@@ -172,29 +176,63 @@ public class MapView extends View {
         invalidate();
     }
 
-    /** はじめに見せる範囲：ずらし終わった地点といまの場所がぜんぶ入る範囲。進むほど引いていく。 */
+    /**
+     * 開いたときの表示：いまの場所をまん中に置き、ずらし終わった地点がぜんぶ入るまで引く。
+     * 進むほど通った範囲が広がるので、だんだん引いていく。
+     */
     public void fit() {
         if (getWidth() == 0) {
             fitted = false;
             return;
         }
-        float minX = nowX, maxX = nowX, minY = nowY, maxY = nowY;
-        for (int i : visited) {
-            float x = JapanMap.x(Route.LON[i]), y = JapanMap.y(Route.LAT[i]);
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y);
-            maxY = Math.max(maxY, y);
-        }
-        float w = Math.max(maxX - minX, MIN_SPAN * 0.7f), h = Math.max(maxY - minY, MIN_SPAN);
-        float availW = getWidth() - 48 * dp, availH = getHeight() - bottomInset - 64 * dp;
-        scale = Math.min(availW / w, availH / h);
-        float cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-        tx = getWidth() / 2f - cx * scale;
-        ty = (getHeight() - bottomInset) / 2f - cy * scale;
-        clamp();
+        float[] home = home();
+        scale = home[0];
+        tx = home[1];
+        ty = home[2];
+        // clamp() はしない。いまの場所は日本の中にあるので、まん中に置けば日本が画面の外へ出ることはない
         fitted = true;
         invalidate();
+    }
+
+    private ValueAnimator moving;
+
+    /** 現在地ボタン：開いたときの表示へ、なめらかに戻る。 */
+    public void goHome() {
+        if (getWidth() == 0) return;
+        if (moving != null) moving.cancel();
+        final float[] home = home();
+        final float s0 = scale, x0 = tx, y0 = ty;
+        // いまの場所が画面の上でまっすぐ動くよう、大きさは比で、位置は「いまの場所の画面の座標」でつなぐ
+        final float px0 = nowX * s0 + x0, py0 = nowY * s0 + y0;
+        final float px1 = nowX * home[0] + home[1], py1 = nowY * home[0] + home[2];
+        moving = ValueAnimator.ofFloat(0, 1);
+        moving.setDuration(MOVE_MS);
+        moving.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator a) {
+                float t = (float) a.getAnimatedValue();
+                scale = (float) (s0 * Math.pow(home[0] / s0, t));
+                tx = px0 + (px1 - px0) * t - nowX * scale;
+                ty = py0 + (py1 - py0) * t - nowY * scale;
+                invalidate();
+            }
+        });
+        moving.start();
+        fitted = true;
+    }
+
+    /** 開いたときの表示の、大きさと位置 {scale, tx, ty}。 */
+    private float[] home() {
+        // いまの場所から、いちばん遠いずらし終わった地点までの距離（左右・上下それぞれ）
+        float hx = 0, hy = 0;
+        for (int i : visited) {
+            hx = Math.max(hx, Math.abs(JapanMap.x(Route.LON[i]) - nowX));
+            hy = Math.max(hy, Math.abs(JapanMap.y(Route.LAT[i]) - nowY));
+        }
+        float w = Math.max(hx * 2, MIN_SPAN * 0.7f), h = Math.max(hy * 2, MIN_SPAN);
+        float availW = getWidth() - 48 * dp, availH = getHeight() - bottomInset - 64 * dp;
+        float s = Math.max(minScale(), Math.min(maxScale(), Math.min(availW / w, availH / h)));
+        return new float[]{s, getWidth() / 2f - nowX * s, (getHeight() - bottomInset) / 2f - nowY * s};
     }
 
     @Override
@@ -235,6 +273,7 @@ public class MapView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
+        if (moving != null && e.getActionMasked() == MotionEvent.ACTION_DOWN) moving.cancel();
         scaler.onTouchEvent(e);
         gestures.onTouchEvent(e);
         return true;
