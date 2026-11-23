@@ -78,6 +78,21 @@ public class MainActivity extends Activity implements MapView.Listener {
         map.setBottomInset(dp(190));
         body.addView(map, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // 現在地ボタン：開いたときの表示（いまの場所がまん中）に戻す
+        LocateView locate = new LocateView(this);
+        locate.setContentDescription("現在地");
+        locate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onPickNone();
+                map.goHome();
+            }
+        });
+        FrameLayout.LayoutParams llp = new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.END | Gravity.TOP);
+        llp.topMargin = dp(12);
+        llp.rightMargin = dp(12);
+        body.addView(locate, llp);
         card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(14), dp(16), dp(16));
@@ -248,6 +263,41 @@ public class MainActivity extends Activity implements MapView.Listener {
 
     private int dp(float v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    /** 現在地ボタン。白い丸に墨のふち、まん中にアクセントの点と十字（地図の「現在地」の形）。 */
+    private static class LocateView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        LocateView(Context ctx) {
+            super(ctx);
+            setClickable(true);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float d = getResources().getDisplayMetrics().density;
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy) - 1.5f * d;
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(0xFFFFFFFF);
+            c.drawCircle(cx, cy, r, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setColor(INK);
+            p.setStrokeWidth(2 * d);
+            c.drawCircle(cx, cy, r, p);
+            // 照準：輪と、上下左右の短い線
+            float ring = 7 * d;
+            p.setStrokeWidth(1.8f * d);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            c.drawCircle(cx, cy, ring, p);
+            c.drawLine(cx, cy - ring - 4 * d, cx, cy - ring + 1 * d, p);
+            c.drawLine(cx, cy + ring - 1 * d, cx, cy + ring + 4 * d, p);
+            c.drawLine(cx - ring - 4 * d, cy, cx - ring + 1 * d, cy, p);
+            c.drawLine(cx + ring - 1 * d, cy, cx + ring + 4 * d, cy, p);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(ACCENT);
+            c.drawCircle(cx, cy, 3.2f * d, p);
+        }
     }
 
     /** 設定の歯車。墨の線で描く。 */
