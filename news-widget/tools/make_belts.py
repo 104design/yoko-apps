@@ -15,6 +15,8 @@ ViewFlipper が切り替えの間隔（10秒前後）ぶん止まったままに
 幅ごとに1組（レイアウト1つ、アニメ1つ）を作り、見出しの長さに合う幅を NewsBelt が選ぶ。
 選んだ幅と文の長さの差が、文の終わりから次の文の頭までのすきま（待ち時間）になる。
 幅の刻みを細かくするほど、すきまは NewsBelt.GAP_DP に近づく。
+見出しの頭が帯の左端に来たところで WAIT_MS だけ止まってから流れ出す（読みはじめやすくするため）。
+アニメの startOffset で止めていて、Android はこれを繰り返しのたびに入れ直すので、1周ごとに止まる。
 幅や速さを変えたら実行し直す。幅の一覧は BeltSizes.java にも書き出す。
 """
 import glob
@@ -26,6 +28,7 @@ RES = os.path.join(HERE, "..", "app", "src", "main", "res")
 WIDTHS = list(range(300, 1301, 20))  # dp。20dp 刻みなので、すきまは GAP_DP より最大 0.5 秒長くなるだけ
 JAVA = os.path.join(HERE, "..", "app", "src", "main", "java", "app", "yokozurashi", "news", "BeltSizes.java")
 SPEED = 40  # dp/秒
+WAIT_MS = 1000  # 流れ出す前に、見出しの頭を止めて見せる時間
 
 TEXT = '''        <TextView
             android:id="@+id/belt_text_%s"
@@ -72,7 +75,8 @@ for w in WIDTHS:
                 '    android:interpolator="@android:anim/linear_interpolator"\n'
                 '    android:repeatCount="infinite"\n'
                 '    android:repeatMode="restart"\n'
-                '    android:fromXDelta="0%%" android:toXDelta="-50%%" android:duration="%d" />\n' % ms)
+                '    android:startOffset="%d"\n'
+                '    android:fromXDelta="0%%" android:toXDelta="-50%%" android:duration="%d" />\n' % (WAIT_MS, ms))
 
 with open(JAVA, "w", encoding="utf-8") as f:
     f.write("package app.yokozurashi.news;\n\n"

@@ -55,13 +55,18 @@
             android:background="@drawable/chip_bg"
             android:text="@string/label_topic" />
 
-        <!-- 流れる見出し。中身は NewsBelt が入れる -->
-        <FrameLayout
+        <!-- 流れる見出し。中身は NewsBelt が入れる。
+             ニュースが変わると、古い見出しが左へ出て、新しい見出しが右から入る（NewsWidgetProvider.bindNews） -->
+        <ViewFlipper
             android:id="@+id/news_holder"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginLeft="8dp" />
+            android:layout_marginLeft="8dp"
+            android:autoStart="false"
+            android:animateFirstView="true"
+            android:inAnimation="@anim/news_in"
+            android:outAnimation="@anim/news_out" />
 
         <ImageView
             android:id="@+id/shuffle"
