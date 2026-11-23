@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,6 +19,14 @@ import java.util.Calendar;
 public class NewsWidgetProvider extends AppWidgetProvider {
     public static final String ACTION_SHUFFLE = "app.yokozurashi.news.SHUFFLE";
     public static final String ACTION_DATE_TICK = "app.yokozurashi.news.DATE_TICK";
+
+    // 帯にいま出している中身（記事のURL、または「読み込み中…」などの文）と、帯の中に積んだ見出しの数。
+    // ニュースが変わったとき、古い見出しを残したまま新しい見出しを足して切り替えると、
+    // 古いほうが左へ出て、新しいほうが右から入る。古い見出しは見えないまま残るので、
+    // BELT_MAX まで積んだら、次は滑らせずに入れ替えて片付ける
+    private static final String KEY_BELT_SHOWN = "beltShown";
+    private static final String KEY_BELT_COUNT = "beltCount";
+    private static final int BELT_MAX = 12;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -143,14 +152,12 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         PendingIntent tap;
         if (item == null) {
             // 一覧がまだないとき。流さない。タップでアプリを開く
-            views.removeAllViews(R.id.news_holder);
-            views.addView(R.id.news_holder, NewsBelt.still(context, NewsStore.tried(context)
-                    ? "ニュースを取得できませんでした" : "ニュースを読み込み中…"));
+            String text = NewsStore.tried(context) ? "ニュースを取得できませんでした" : "ニュースを読み込み中…";
+            putBelt(context, views, "text:" + text, NewsBelt.still(context, text));
             tap = PendingIntent.getActivity(context, 2, new Intent(context, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         } else {
-            views.removeAllViews(R.id.news_holder);
-            views.addView(R.id.news_holder, NewsBelt.flowing(context, item.line()));
+            putBelt(context, views, "url:" + item.url, NewsBelt.flowing(context, item.line()));
             Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(item.url));
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             tap = PendingIntent.getActivity(context, 1, open,
@@ -162,5 +169,26 @@ public class NewsWidgetProvider extends AppWidgetProvider {
         shuffle.setAction(ACTION_SHUFFLE);
         views.setOnClickPendingIntent(R.id.shuffle, PendingIntent.getBroadcast(context, 4, shuffle,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+    }
+
+    /**
+     * 帯に見出しを入れる。いまと違う見出しなら、古いほうを左へ滑らせて出し、新しいほうを右から入れる。
+     * 同じ見出し（0時の日付の描き直しなど）なら、滑らせずに入れ直す。
+     */
+    private static void putBelt(Context context, RemoteViews views, String key, RemoteViews belt) {
+        SharedPreferences p = Store.prefs(context);
+        String shown = p.getString(KEY_BELT_SHOWN, null);
+        int count = p.getInt(KEY_BELT_COUNT, 0);
+        if (shown != null && !shown.equals(key) && count > 0 && count < BELT_MAX) {
+            // 古い見出しの後ろに足して、次へ送る。送るときに inAnimation と outAnimation が動く
+            views.addView(R.id.news_holder, belt);
+            views.showNext(R.id.news_holder);
+            count++;
+        } else {
+            views.removeAllViews(R.id.news_holder);
+            views.addView(R.id.news_holder, belt);
+            count = 1;
+        }
+        p.edit().putString(KEY_BELT_SHOWN, key).putInt(KEY_BELT_COUNT, count).apply();
     }
 }
