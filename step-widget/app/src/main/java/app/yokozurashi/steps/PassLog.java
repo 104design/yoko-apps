@@ -14,9 +14,11 @@ import java.time.LocalDate;
  *
  * 新しく通った地点の日付は、ヘルスコネクトの日ごとの歩数から割り出す（estimate）。
  * 歩数を読むたびではなく、まだ日付のない地点があるときだけ割り出す。
+ * 数えるのは歩いたぶんの距離だけ。確認用に足した距離で進んだ地点は記録しない。
  */
 public class PassLog {
     private static final String KEY = "pass_days";
+    private static final String FAILED = "pass_days_failed"; // 前回、日ごとの歩数を読めなかったか
     private static final int N = Route.AT_M.length;
 
     /** 通し番号 k の地点までの、出発からの道のり（m）。 */
@@ -52,12 +54,26 @@ public class PassLog {
     }
 
     public static void clear(Context ctx) {
-        Store.prefs(ctx).edit().remove(KEY).apply();
+        Store.prefs(ctx).edit().remove(KEY).remove(FAILED).apply();
     }
 
     /** まだ日付のない地点があるか。 */
     public static boolean needsDates(Context ctx) {
-        return days(ctx).length < passedCount(StepStore.distanceM(ctx));
+        return days(ctx).length < passedCount(StepStore.realDistanceM(ctx));
+    }
+
+    /** 歩いたぶんで通った地点の数（確認用の距離を含めない）。 */
+    public static int realPassedCount(Context ctx) {
+        return passedCount(StepStore.realDistanceM(ctx));
+    }
+
+    /** 日ごとの歩数を読めなかったことを覚える（読めたら消す）。地図のカードで「日付なし」と出すのに使う。 */
+    public static void setFailed(Context ctx, boolean failed) {
+        Store.prefs(ctx).edit().putBoolean(FAILED, failed).apply();
+    }
+
+    public static boolean failed(Context ctx) {
+        return Store.prefs(ctx).getBoolean(FAILED, false);
     }
 
     /**
@@ -66,7 +82,7 @@ public class PassLog {
      */
     public static synchronized void fill(Context ctx, LocalDate firstDay, long[] dailySteps) {
         long[] have = days(ctx);
-        int need = passedCount(StepStore.distanceM(ctx));
+        int need = passedCount(StepStore.realDistanceM(ctx));
         if (have.length >= need) return;
         save(ctx, estimate(have, need, firstDay.toEpochDay(), dailySteps,
                 StepStore.stride(ctx), LocalDate.now().toEpochDay()));
@@ -100,12 +116,17 @@ public class PassLog {
     }
 
     /**
-     * 地点 i（0〜地点の数-1）の名物を、いちばん最近ずらし終わった日。まだなら -1。
+     * lap 周目（0から）の地点 i の名物をずらし終わった日。記録がなければ -1。
      * 名物 i をずらし終わる = 次の地点（通し番号 k+1）を通る。
      */
-    static long finishedDay(long[] days, int i) {
-        long best = -1;
-        for (int k = i; k + 1 < days.length; k += N) best = Math.max(best, days[k + 1]);
-        return best;
+    static long finishedDay(long[] days, int lap, int i) {
+        int k = lap * N + i + 1;
+        return k < days.length ? days[k] : -1;
+    }
+
+    /** lap 周目（0から）にゴール（最後の地点）へ着いた日。記録がなければ -1。 */
+    static long goalDay(long[] days, int lap) {
+        int k = lap * N + N - 1;
+        return k < days.length ? days[k] : -1;
     }
 }

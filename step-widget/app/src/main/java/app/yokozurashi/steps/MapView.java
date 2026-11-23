@@ -75,6 +75,7 @@ public class MapView extends View {
     private int[] visited = new int[0];      // ずらし終わった地点（Route の番号）
     private final Path route = new Path();   // 通った道すじ（地図の座標）
     private int picked = -1;
+    private boolean showNow = true; // いまの場所のピンを出すか（前の周を見るときは出さない）
     private Listener listener;
 
     /** 描いたピン（タップの当たり判定に使う）。 */
@@ -164,6 +165,7 @@ public class MapView extends View {
      * @param reached  道すじをどこまで通ったか（Route の番号。周回していれば最後まで）
      */
     public void setJourney(int index, float progress, String pref, int[] visited, int reached) {
+        showNow = true;
         currentPref = JapanMap.code(pref);
         this.visited = visited;
         int next = Math.min(index + 1, Route.LAT.length - 1);
@@ -178,6 +180,30 @@ public class MapView extends View {
             else route.lineTo(x, y);
         }
         if (reached == index) route.lineTo(nowX, nowY);
+        invalidate();
+    }
+
+    /**
+     * 前の周を見るとき。いまの場所のピンと県の塗りは出さず、道すじをぜんぶ引く。
+     * 開いたときの表示は、ずらし終わった地点がぜんぶ入る範囲のまん中。
+     */
+    public void setFinishedLap() {
+        int n = Route.LAT.length;
+        int[] all = new int[n];
+        for (int i = 0; i < n; i++) all[i] = i;
+        setJourney(n - 1, 0, "", all, n - 1);
+        showNow = false;
+        currentPref = 0;
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            float x = JapanMap.x(Route.LON[i]), y = JapanMap.y(Route.LAT[i]);
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        }
+        nowX = (minX + maxX) / 2; // 見せる範囲のまん中として使う（ピンは出さない）
+        nowY = (minY + maxY) / 2;
         invalidate();
     }
 
@@ -405,7 +431,7 @@ public class MapView extends View {
         }
 
         // いまの場所
-        drawPin(c, nowX * scale + tx, nowY * scale + ty, PIN_NOW_H);
+        if (showNow) drawPin(c, nowX * scale + tx, nowY * scale + ty, PIN_NOW_H);
     }
 
     /**

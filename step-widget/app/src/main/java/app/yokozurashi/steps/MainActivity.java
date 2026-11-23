@@ -22,8 +22,11 @@ import java.time.LocalDate;
  * メインの画面。日本地図に、これまでにずらしたものを出す。
  * 下のカードには、ふだんはいまの場所を出し、ピンをタップするとその地点の名物を出す。
  * 右上の歯車から設定画面（SettingsActivity）を開く。開くたびに歩数を読み直す。
+ * 地図に出すのは、いまの周でずらしたものだけ。前の周は、設定画面から EXTRA_LAP を付けて開いて見る。
  */
 public class MainActivity extends Activity implements MapView.Listener {
+    /** 前の周を見るときに付ける、周の番号（0 から）。付いていなければ、いまの旅。 */
+    public static final String EXTRA_LAP = "lap";
     private static final int REQ_PERMISSION = 1;
     private static final int INK = 0xFF141414;
     private static final int GRAY = 0xFF5A5A5A;
@@ -36,10 +39,12 @@ public class MainActivity extends Activity implements MapView.Listener {
     private TextView subtitle;
     private int picked = -1;
     private int shownIndex = -1, shownLap = -1; // 地図の見せる範囲を決めたときの場所
+    private int viewLap = -1; // 前の周を見ているときの周の番号（0 から）。いまの旅なら -1
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        viewLap = getIntent().getIntExtra(EXTRA_LAP, -1);
         black = getResources().getFont(R.font.zen_maru_black);
         bold = getResources().getFont(R.font.zen_maru_bold);
 
@@ -68,7 +73,7 @@ public class MainActivity extends Activity implements MapView.Listener {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
-        header.addView(gear, glp);
+        if (viewLap < 0) header.addView(gear, glp);
         root.addView(header);
 
         // 地図と、その下に重なるカード
@@ -116,6 +121,7 @@ public class MainActivity extends Activity implements MapView.Listener {
     protected void onResume() {
         super.onResume();
         show();
+        if (viewLap >= 0) return; // 前の周を見ているときは読み直さない
         StepReader.read(this, new Runnable() {
             @Override
             public void run() {
@@ -131,12 +137,15 @@ public class MainActivity extends Activity implements MapView.Listener {
 
     /** 地図とカードを、いまの旅のようすで描き直す。 */
     private void show() {
+        if (viewLap >= 0) {
+            showFinishedLap();
+            return;
+        }
         Journey j = Journey.at(StepStore.distanceM(this));
-        int n = Route.AT_M.length;
-        boolean around = j.lap > 1; // 1周以上していれば、すべての地点をずらし終わっている
-        int[] visited = new int[around ? n : j.index];
+        // 地図には、いまの周でずらし終わったものだけ出す
+        int[] visited = new int[j.index];
         for (int i = 0; i < visited.length; i++) visited[i] = i;
-        map.setJourney(j.index, j.progress, j.pref, visited, around ? n - 1 : j.index);
+        map.setJourney(j.index, j.progress, j.pref, visited, j.index);
         map.setPicked(picked);
         if (j.index != shownIndex || j.lap != shownLap) {
             // 進んでいたら、通ったところがぜんぶ見える範囲に合わせ直す
@@ -144,8 +153,8 @@ public class MainActivity extends Activity implements MapView.Listener {
             shownLap = j.lap;
             map.fit();
         }
-        int finished = Math.max(0, PassLog.passedCount(j.distanceM) - 1);
-        subtitle.setText("ずらしたもの " + finished + " ・ " + Journey.km(j.distanceM) + "km");
+        subtitle.setText((j.lap > 1 ? j.lap + "周目 ・ " : "") + "ずらしたもの " + j.index
+                + " ・ " + Journey.km(j.distanceM) + "km");
         if (picked >= 0) showPicked(picked);
         else showCurrent(j);
     }
@@ -162,7 +171,46 @@ public class MainActivity extends Activity implements MapView.Listener {
         if (picked < 0) return;
         picked = -1;
         map.setPicked(-1);
-        showCurrent(Journey.at(StepStore.distanceM(this)));
+        if (viewLap >= 0) showLapCard();
+        else showCurrent(Journey.at(StepStore.distanceM(this)));
+    }
+
+    /** 前の周の地図：ぜんぶの地点にピンを立て、カードにはその周のゴールの日を出す。 */
+    private void showFinishedLap() {
+        map.setFinishedLap();
+        map.setPicked(picked);
+        if (shownLap != viewLap) {
+            shownLap = viewLap;
+            map.fit();
+        }
+        long goal = PassLog.goalDay(PassLog.days(this), viewLap);
+        subtitle.setText((viewLap + 1) + "周目 ・ " + (goal < 0 ? "ゴールの日付なし" : date(goal) + " ゴール"));
+        if (picked >= 0) showPicked(picked);
+        else showLapCard();
+    }
+
+    private void showLapCard() {
+        card.removeAllViews();
+        long goal = PassLog.goalDay(PassLog.days(this), viewLap);
+        card.addView(text((viewLap + 1) + "周目", black, 17, ACCENT_DARK));
+        card.addView(spaced(text("ゴール（北海道 " + Route.NAME[Route.NAME.length - 1] + "） "
+                + (goal < 0 ? "日付なし" : date(goal)), bold, 12.5f, INK), 8));
+        card.addView(spaced(text("ピンをタップすると、ずらしたものと日付が見られます。", bold, 11, GRAY), 8));
+        card.addView(spaced(pill("いまの旅に戻る", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        }), 12));
+    }
+
+    /** ずらし終わった日の文。記録がなければ、そのわけを出す。 */
+    private String finishedText(int lap, int i) {
+        long day = PassLog.finishedDay(PassLog.days(this), lap, i);
+        if (day >= 0) return date(day) + " ずらし終わり";
+        if (lap * Route.AT_M.length + i + 1 >= PassLog.realPassedCount(this)) return "確認用に進めたところ";
+        if (PassLog.failed(this)) return "日付なし";
+        return "日付を調べています";
     }
 
     /** カード：いまの場所。歩数の読み取りが許可されていなければ、許可を求める。 */
@@ -201,8 +249,8 @@ public class MainActivity extends Activity implements MapView.Listener {
         row.setGravity(Gravity.BOTTOM);
         TextView place = text(Route.PREF[i] + " " + Route.NAME[i], black, 16, ACCENT_DARK);
         row.addView(place, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        long day = PassLog.finishedDay(PassLog.days(this), i);
-        row.addView(text(day < 0 ? "日付を調べています" : date(day) + " ずらし終わり", bold, 10, GRAY));
+        int lap = viewLap >= 0 ? viewLap : Journey.at(StepStore.distanceM(this)).lap - 1;
+        row.addView(text(finishedText(lap, i), bold, 10, GRAY));
         card.addView(row);
         card.addView(spaced(text(Route.ITEM[i], black, 19, INK), 6));
         card.addView(spaced(text(pastTense(Route.TEXT[i]), bold, 12.5f, INK), 6));
