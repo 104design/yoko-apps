@@ -1,7 +1,6 @@
 package app.yokozurashi.steps;
 
 import android.content.res.Resources;
-import android.graphics.Path;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -20,8 +19,13 @@ final class JapanMap {
     private static final double LON0 = 122, LAT0 = 46;
     private static final double COS = Math.cos(Math.toRadians(36));
 
-    /** 都道府県ごとの形（番号 1〜47。0 は使わない）。地図の座標。 */
-    final Path[] prefs = new Path[48];
+    /**
+     * 都道府県ごとの形（番号 1〜47。0 は使わない）。輪ごとに、地図の座標を x, y, x, y… と並べる。
+     * 線を揺らして描くので、Path ではなく点のまま持つ（MapView が描くたびに揺らす）。
+     */
+    final float[][][] rings = new float[48][][];
+    /** 輪ごとの範囲（地図の座標で 左, 上, 右, 下）。画面の外の輪を飛ばすのに使う。 */
+    final float[][][] bounds = new float[48][][];
 
     static float x(double lon) {
         return (float) ((lon - LON0) * COS);
@@ -44,18 +48,29 @@ final class JapanMap {
             int count = in.readInt();
             for (int p = 0; p < count; p++) {
                 int code = in.readByte();
-                int rings = in.readShort();
-                Path path = new Path();
-                for (int r = 0; r < rings; r++) {
+                int count2 = in.readShort();
+                float[][] rings = new float[count2][];
+                float[][] bounds = new float[count2][];
+                for (int r = 0; r < count2; r++) {
                     int n = in.readShort();
+                    float[] pts = new float[n * 2];
+                    float l = Float.MAX_VALUE, t = Float.MAX_VALUE, rt = -Float.MAX_VALUE, b = -Float.MAX_VALUE;
                     for (int i = 0; i < n; i++) {
                         float px = x(in.readInt() / 1000.0), py = y(in.readInt() / 1000.0);
-                        if (i == 0) path.moveTo(px, py);
-                        else path.lineTo(px, py);
+                        pts[i * 2] = px;
+                        pts[i * 2 + 1] = py;
+                        l = Math.min(l, px);
+                        rt = Math.max(rt, px);
+                        t = Math.min(t, py);
+                        b = Math.max(b, py);
                     }
-                    path.close();
+                    rings[r] = pts;
+                    bounds[r] = new float[]{l, t, rt, b};
                 }
-                if (code >= 1 && code <= 47) map.prefs[code] = path;
+                if (code >= 1 && code <= 47) {
+                    map.rings[code] = rings;
+                    map.bounds[code] = bounds;
+                }
             }
         } catch (IOException e) {
             // 読めなければ、地図の形なしで地点だけ出す

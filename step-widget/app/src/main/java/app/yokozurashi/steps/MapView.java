@@ -21,6 +21,7 @@ import java.util.Map;
 
 /**
  * 日本地図。いまいる都道府県を塗り、通った道すじと、ずらし終わった地点のよこずらしのピンを出す。
+ * 県の形の線は、手描きのように少し揺らして描く（wobble）。
  * 指で動かす・広げる・ダブルタップで拡大できる。広く見ているときは、近いピンをまとめて数を添える。
  * ピンをタップすると Listener に知らせる。まとめたピンをタップすると、そこへ寄って拡大する。
  */
@@ -42,6 +43,8 @@ public class MapView extends View {
     private static final float PIN_H = 17, PIN_PICKED_H = 26, PIN_NOW_H = 28; // ピンの高さ（dp）
     private static final float CLUSTER_CELL = 34; // この大きさ（dp）のます目に入るピンを1つにまとめる
     private static final float MIN_SPAN = 2.2f;   // はじめに見せる範囲の、いちばん狭い高さ（緯度の度）
+    // 線の揺らし方（dp）。揺れの大きさ、揺れの波の長さ、点を打ち直す間隔
+    private static final float WOBBLE_AMP = 1.3f, WOBBLE_LEN = 14, WOBBLE_STEP = 4;
 
     private final float dp;
     private final JapanMap map;
@@ -71,6 +74,7 @@ public class MapView extends View {
     }
 
     private final List<Cluster> clusters = new ArrayList<>();
+    private final Path[] shapes = new Path[48]; // 揺らした県の形（画面の座標）。描くたびに作り直す
     private final ScaleGestureDetector scaler;
     private final GestureDetector gestures;
 
@@ -82,6 +86,7 @@ public class MapView extends View {
         // コマの余白を落とす（tools/make_frames.py の絵で、よこずらしの本体がある範囲）
         int fw = frame.getWidth(), fh = frame.getHeight();
         pin = Bitmap.createBitmap(frame, 0, fh * 96 / 285, Math.min(fw, fw * 181 / 285), fh * 122 / 285);
+        for (int i = 0; i < shapes.length; i++) shapes[i] = new Path();
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeJoin(Paint.Join.ROUND);
         line.setStrokeCap(Paint.Cap.ROUND);
@@ -261,26 +266,26 @@ public class MapView extends View {
         m.setScale(scale, scale);
         m.postTranslate(tx, ty);
 
-        // 都道府県の形。線の太さは、拡大しても画面の上で同じになるように割り戻す
-        c.save();
-        c.concat(m);
+        // 都道府県の形。画面の座標で、線を揺らして作り直す
+        for (int code = 1; code <= 47; code++) buildShape(code);
         fill.setStyle(Paint.Style.FILL);
         for (int code = 1; code <= 47; code++) {
-            Path p = map.prefs[code];
-            if (p == null) continue;
             fill.setColor(code == currentPref ? ACCENT : LAND);
-            c.drawPath(p, fill);
+            c.drawPath(shapes[code], fill);
         }
         line.setColor(0xFF3A3A3A);
-        line.setStrokeWidth(0.8f * dp / scale);
+        line.setStrokeWidth(0.8f * dp);
         for (int code = 1; code <= 47; code++) {
-            if (map.prefs[code] != null && code != currentPref) c.drawPath(map.prefs[code], line);
+            if (code != currentPref) c.drawPath(shapes[code], line);
         }
-        if (currentPref > 0 && map.prefs[currentPref] != null) {
+        if (currentPref > 0) {
             line.setColor(INK);
-            line.setStrokeWidth(1.6f * dp / scale);
-            c.drawPath(map.prefs[currentPref], line);
+            line.setStrokeWidth(1.6f * dp);
+            c.drawPath(shapes[currentPref], line);
         }
+
+        c.save();
+        c.concat(m);
         // 通った道すじ
         line.setColor(ACCENT_DARK);
         line.setStrokeWidth(1.4f * dp / scale);
@@ -322,6 +327,69 @@ public class MapView extends View {
 
         // いまの場所
         drawPin(c, nowX * scale + tx, nowY * scale + ty, PIN_NOW_H);
+    }
+
+    /**
+     * 県の形を、画面の座標で揺らして作る。
+     * 点を WOBBLE_STEP ごとに打ち直し、「画面の上の位置で決まるずれ」でずらす。ずれは位置だけで決まるので、
+     * となりの県と共有している境は同じ線になり、指で動かしても形は変わらない（拡大・縮小のあいだは揺れが変わる）。
+     * 画面の外の輪は飛ばし、画面の外の辺は打ち直さない。
+     */
+    private void buildShape(int code) {
+        Path path = shapes[code];
+        path.reset();
+        float[][] rings = map.rings[code];
+        if (rings == null) return;
+        float margin = 40 * dp, w = getWidth(), h = getHeight();
+        float step = WOBBLE_STEP * dp;
+        for (int r = 0; r < rings.length; r++) {
+            float[] b = map.bounds[code][r];
+            if (b[2] * scale + tx < -margin || b[0] * scale + tx > w + margin
+                    || b[3] * scale + ty < -margin || b[1] * scale + ty > h + margin) continue;
+            float[] p = rings[r];
+            int n = p.length / 2;
+            float ax = p[0] * scale, ay = p[1] * scale;
+            wobbleTo(path, ax, ay, true);
+            for (int i = 1; i < n; i++) {
+                float bx = p[i * 2] * scale, by = p[i * 2 + 1] * scale;
+                boolean visible = Math.max(ax, bx) + tx > -margin && Math.min(ax, bx) + tx < w + margin
+                        && Math.max(ay, by) + ty > -margin && Math.min(ay, by) + ty < h + margin;
+                int k = visible ? Math.max(1, (int) Math.ceil(Math.hypot(bx - ax, by - ay) / step)) : 1;
+                for (int j = 1; j <= k; j++) {
+                    float t = (float) j / k;
+                    wobbleTo(path, ax + (bx - ax) * t, ay + (by - ay) * t, false);
+                }
+                ax = bx;
+                ay = by;
+            }
+            path.close();
+        }
+    }
+
+    /** (x, y)（地図の座標 × scale）を揺らして、画面の座標で path に足す。 */
+    private void wobbleTo(Path path, float x, float y, boolean first) {
+        float len = WOBBLE_LEN * dp, amp = WOBBLE_AMP * dp;
+        float dx = amp * noise(x / len, y / len, 1), dy = amp * noise(x / len, y / len, 2);
+        if (first) path.moveTo(x + dx + tx, y + dy + ty);
+        else path.lineTo(x + dx + tx, y + dy + ty);
+    }
+
+    /** なめらかな -1〜1 のゆらぎ（格子の点ごとの乱数を、なめらかにつなぐ）。 */
+    private static float noise(float x, float y, int seed) {
+        int i = (int) Math.floor(x), j = (int) Math.floor(y);
+        float fx = x - i, fy = y - j;
+        fx = fx * fx * (3 - 2 * fx);
+        fy = fy * fy * (3 - 2 * fy);
+        float a = hash(i, j, seed) * (1 - fx) + hash(i + 1, j, seed) * fx;
+        float b = hash(i, j + 1, seed) * (1 - fx) + hash(i + 1, j + 1, seed) * fx;
+        return a * (1 - fy) + b * fy;
+    }
+
+    private static float hash(int i, int j, int seed) {
+        int x = i * 374761393 + j * 668265263 + seed * 2147483647;
+        x = (x ^ (x >>> 13)) * 1274126177;
+        x ^= x >>> 16;
+        return (x & 0xffff) / 32767.5f - 1;
     }
 
     private void drawPin(Canvas c, float x, float y, float hDp) {

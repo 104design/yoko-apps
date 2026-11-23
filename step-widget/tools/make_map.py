@@ -4,6 +4,8 @@
 もとのデータは、国土地理院「地球地図日本」（2016）の行政界。npm の jpn-atlas 1.0.2 に入っている
 build/polbnda_jpn.shp（市区町村ごとの面、緯度経度）を使う。出典を書けば自由に使える。
 市区町村を都道府県ごとにまとめ、線を簡略化し、ごく小さな島を省く。
+簡略化は、となり合う都道府県の境が同じ線のままになるよう、47都道府県をまとめて行う（coverage_simplify）。
+県ごとに別々に簡略化すると、共有している境が県ごとに少しずつずれて、拡大すると二重の線に見える。
 
 使い方:
     npm pack jpn-atlas@1.0.2 && tar xzf jpn-atlas-1.0.2.tgz   （作業用の場所で）
@@ -19,12 +21,13 @@ import struct
 import sys
 
 import shapefile
+import shapely
 from shapely.geometry import shape
 from shapely.ops import unary_union
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "app", "src", "main", "res", "raw", "japan_prefs.bin")
-SIMPLIFY = 0.008   # 度。約800m より細かい凹凸を落とす
+SIMPLIFY = 0.01    # 度。約1km より細かい凹凸を落とす
 MIN_AREA = 0.0004  # 度の2乗。約2km四方より小さい島は省く
 
 
@@ -41,10 +44,11 @@ def main(src):
         groups.setdefault(int(code), []).append(geom)
     assert sorted(groups) == list(range(1, 48)), sorted(groups)
 
+    codes = sorted(groups)
+    merged_all = shapely.coverage_simplify([unary_union(groups[c]) for c in codes], SIMPLIFY)
     out = struct.pack(">i", len(groups))
     points = 0
-    for code in sorted(groups):
-        merged = unary_union(groups[code]).simplify(SIMPLIFY, preserve_topology=True)
+    for code, merged in zip(codes, merged_all):
         polys = [merged] if merged.geom_type == "Polygon" else list(merged.geoms)
         rings = [p.exterior.coords for p in polys if p.area >= MIN_AREA]
         out += struct.pack(">bh", code, len(rings))
