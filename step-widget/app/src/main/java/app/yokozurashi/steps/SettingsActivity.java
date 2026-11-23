@@ -249,14 +249,23 @@ public class SettingsActivity extends Activity {
         }
     }
 
-    /** 確認用に進めた距離と、それだけを消すボタン。 */
+    /**
+     * 確認用の欄。歩かなくても地点や周の切り替わりを見られるよう、距離を足すボタンを置く。
+     * 足した距離は地図とウィジェットには出るが、通った日の記録には入らない。題名の長押しでも 30km 進む。
+     */
     private void showBonus() {
         bonusBox.removeAllViews();
         long bonus = StepStore.bonusM(this);
-        if (bonus <= 0) return;
         bonusBox.addView(text("確認用", 16, dp(24)));
-        bonusBox.addView(text("確認用に進めた距離 " + Journey.km(bonus) + "km。地図とウィジェットには出ますが、"
-                + "通った日の記録には入りません。", 14, dp(6)));
+        bonusBox.addView(text((bonus > 0 ? "確認用に進めた距離 " + Journey.km(bonus) + "km。" : "")
+                + "確認用に進めた距離は、地図とウィジェットには出ますが、通った日の記録には入りません。", 14, dp(6)));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.addView(bonusButton("30km 進む", BONUS_M));
+        // 1周ぶん（ゴールのあとの休みを含む）。2周目の地図や「これまでの周」を見るのに使う
+        row.addView(bonusButton("1周ぶん進む（" + Route.LAP_M / 1000 + "km）", Route.LAP_M));
+        bonusBox.addView(row);
+        if (bonus <= 0) return;
         Button clear = button("確認用の距離を消す");
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -267,6 +276,19 @@ public class SettingsActivity extends Activity {
             }
         });
         bonusBox.addView(clear);
+    }
+
+    private Button bonusButton(String label, final long meters) {
+        Button b = button(label);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                StepStore.addBonus(SettingsActivity.this, meters);
+                StepWidgetProvider.updateAll(SettingsActivity.this);
+                show();
+            }
+        });
+        return b;
     }
 
     private void confirmRestart() {
