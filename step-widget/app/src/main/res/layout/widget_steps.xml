@@ -13,22 +13,11 @@
         android:layout_height="match_parent"
         android:scaleType="fitXY" />
 
-    <!-- タップする場所。上半分はアプリを開く、下半分はその場で歩数を読み直す。帯だけは下の band_box が受ける -->
-    <LinearLayout
+    <!-- タップする場所。帯と更新マーク以外はアプリを開く。帯と更新マークは、下の band_* と reload_* が受ける -->
+    <FrameLayout
+        android:id="@+id/tap_all"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-        <FrameLayout
-            android:id="@+id/tap_top"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <FrameLayout
-            android:id="@+id/tap_bottom"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+        android:layout_height="match_parent" />
 
     <!-- 帯のタップを受ける枠と、帯の中の文。
          位置と大きさは、ウィジェット全体に対する割合で決める（StepWidgetProvider.place）。
@@ -76,6 +65,47 @@
                     android:layout_marginTop="2dp"
                     android:layout_marginBottom="2dp" />
             </FrameLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 更新マークのタップを受ける枠。
+         位置と大きさは、ウィジェット全体に対する割合で決める（StepWidgetProvider.place）。
+         入れ子の4つの枠の weightSum を変えると、いちばん内側の枠が「左から何割・幅何割・上から何割・高さ何割」に来る。
+         画素の数で決めると、端末が知らせる大きさと実際の大きさが食い違う端末で位置がずれる -->
+    <LinearLayout
+        android:id="@+id/reload_h1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:baselineAligned="false"
+            android:orientation="horizontal">
+        <LinearLayout
+            android:id="@+id/reload_h2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="right"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:id="@+id/reload_v1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/reload_v2"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:gravity="bottom"
+                    android:orientation="vertical">
+            <FrameLayout
+                android:id="@+id/tap_reload"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

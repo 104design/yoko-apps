@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="app.yokozurashi.steps"
-    android:versionCode="15"
-    android:versionName="0.15">
+    android:versionCode="17"
+    android:versionName="0.17">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
@@ -25,6 +25,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- ウィジェットの更新マークで開く、見えない画面。歩数を読んだらすぐ閉じる。
+             アプリの画面とは別のタスクで開き（taskAffinity が空）、最近使ったアプリにも出さない -->
+        <activity
+            android:name=".ReloadActivity"
+            android:exported="false"
+            android:theme="@style/Reload"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleTask" />
 
         <!-- ヘルスコネクトの許可の画面から「このアプリがデータを使う理由」を開くときの入口。
              これがないと、Android 14 以上で許可を求められない -->

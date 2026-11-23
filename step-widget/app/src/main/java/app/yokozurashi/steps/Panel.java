@@ -43,6 +43,8 @@ public class Panel {
     private static final float BAND_SIDE = 10, BAND_TOP = 88, BAND_H = 30;
     private static final float BAND_TEXT_SIDE = 12; // 帯の中の、文字の左右の余白
     private static final float TRACK_SIDE = 26;  // 道のりの線の左右の余白
+    private static final float RELOAD_R = 10;     // 更新マークの丸の半径
+    public static final float RELOAD_TAP = 36;   // 更新マークのタップを受ける枠（正方形）
     private static final float WAVE_H = 2.2f, WAVE_LEN = 5; // 海の線の、波の高さと細かさ
     private static final float TRACK_UP = 26;    // 線の、下端からの高さ
     private static final float YOKO_BOX = 60;    // よこずらしのコマの枠（正方形）
@@ -129,7 +131,8 @@ public class Panel {
         public String prefPicture; // この都道府県の形の絵の名前（pref_NN）
         public long distanceM; // 累計の距離
         public long today;     // きょうの歩数
-        public String time;    // 最後に歩数を読めた時刻（「12:34」）。なければ null
+        // 描いた更新マークのまん中（拡大率1のdp）。render が書きこみ、タップを受ける枠を合わせるのに使う
+        public float reloadX, reloadY;
         public String from;    // 線の左端の地名
         public String to;      // 線の右端の説明（「読谷まで あと12.3km」）
         public float progress; // 区間の進み具合
@@ -201,7 +204,7 @@ public class Panel {
         c.drawText(tail, x, bottom - 2, unit);
         c.restore();
 
-        // 3行目：きょうの歩数と、最後に読めた時刻
+        // 3行目：きょうの歩数と、その右に更新マーク
         TextPaint label = text(bold, 10, GRAY);
         TextPaint steps = text(black, 13, INK);
         String todayText = String.format("%,d歩", t.today);
@@ -209,10 +212,10 @@ public class Panel {
         c.drawText("きょう", sx, bottom + 17, label);
         sx += label.measureText("きょう") + 4;
         c.drawText(todayText, sx, bottom + 17, steps);
-        sx += steps.measureText(todayText) + 7;
-        if (t.time != null && sx + label.measureText(t.time) <= SIDE + leftRoom) {
-            c.drawText(t.time, sx, bottom + 17, label);
-        }
+        sx += steps.measureText(todayText) + 6;
+        t.reloadX = sx + RELOAD_R;
+        t.reloadY = bottom + 12.5f;
+        drawReload(c, t.reloadX, t.reloadY);
 
         // 帯：いまずらしているもの
         RectF band = new RectF(BAND_SIDE, lay.bandTop, lay.w - BAND_SIDE, lay.bandTop + BAND_H);
@@ -260,6 +263,29 @@ public class Panel {
                 Math.max(0, right - toW - 10 - SIDE), TextUtils.TruncateAt.END);
         c.drawText(from, 0, from.length(), SIDE, lay.h - 8, small);
         return bmp;
+    }
+
+    /** 更新マーク。薄いアクセントの丸に、墨のまるい矢印。 */
+    private static void drawReload(Canvas c, float cx, float cy) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(ACCENT_PALE);
+        c.drawCircle(cx, cy, RELOAD_R, p);
+        float r = RELOAD_R * 0.52f;
+        p.setColor(INK);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(1.6f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        c.drawArc(new RectF(cx - r, cy - r, cx + r, cy + r), 40, 290, false, p);
+        // 矢じり（弧の終わり、右下）
+        double a = Math.toRadians(40);
+        float ax = cx + r * (float) Math.cos(a), ay = cy + r * (float) Math.sin(a);
+        Path head = new Path();
+        head.moveTo(ax, ay - 3.2f);
+        head.lineTo(ax + 3.2f, ay + 0.6f);
+        head.lineTo(ax - 2.4f, ay + 1.6f);
+        head.close();
+        p.setStyle(Paint.Style.FILL);
+        c.drawPath(head, p);
     }
 
     /** 道のりの線。陸はまっすぐ、海は波の形。 */
