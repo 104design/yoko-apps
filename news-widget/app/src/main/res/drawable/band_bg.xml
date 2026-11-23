@@ -2,5 +2,6 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="#72CFCB" />
     <stroke android:width="2dp" android:color="#141414" />
-    <corners android:radius="16dp" />
+    <!-- 帯の高さ（48dp）の半分。両端が半円になる。よこめぐりの帯と合わせる -->
+    <corners android:radius="24dp" />
 </shape>
