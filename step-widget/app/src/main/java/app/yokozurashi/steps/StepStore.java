@@ -115,6 +115,7 @@ public class StepStore {
                 .putLong(CLOSED, now)
                 .putLong(START, now)
                 .apply();
+        PassLog.clear(ctx);
     }
 
     private static int dayKey() {

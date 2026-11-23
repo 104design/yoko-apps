@@ -143,7 +143,11 @@ public class StepWidgetProvider extends AppWidgetProvider {
 
     /** 名物の検索結果のURL。同じ名前のものと区別がつくよう、都道府県の名前を添えて検索する。 */
     static Uri searchUrl(Journey j) {
-        return Uri.parse("https://www.google.com/search?q=" + Uri.encode(j.item + " " + j.pref));
+        return searchUrl(j.item, j.pref);
+    }
+
+    static Uri searchUrl(String item, String pref) {
+        return Uri.parse("https://www.google.com/search?q=" + Uri.encode(item + " " + pref));
     }
 
     /**

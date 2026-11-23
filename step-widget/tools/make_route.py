@@ -36,6 +36,11 @@ public class Route {
     /** その都道府県の形の絵の名前（pref_NN）。NN は都道府県の番号（01 北海道 〜 47 沖縄県）。 */
     public static final String[] PREF_PICTURE = {
 %s    };
+    /** 地点の緯度と経度（度）。アプリの地図に使う。 */
+    public static final float[] LAT = {
+%s    };
+    public static final float[] LON = {
+%s    };
     /** その地点から次の地点までが、海を船で渡る区間か。 */
     public static final boolean[] SEA = {
 %s    };
@@ -103,6 +108,8 @@ def main():
             rows([p[8] for p in points], '"%s"', 1),
             rows([p[6] for p in points], '"%s"', 4),
             rows([p[7] for p in points], '"%s"', 6),
+            rows([p[2] for p in points], "%.2ff", 10),
+            rows([p[3] for p in points], "%.2ff", 10),
             rows(["true" if p[9] else "false" for p in points], "%s", 12),
             rows(at, "%d", 8),
             REST_M, at[-1] + REST_M))

@@ -1,165 +1,106 @@
 package app.yokozurashi.steps;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.appwidget.AppWidgetManager;
-import android.content.ComponentName;
-import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.time.LocalDate;
 
 /**
- * アプリの画面。役割は、ヘルスコネクトの歩数を読む許可をもらうこと、旅のようすを見せること、歩幅を決めること。
- * 開くたびに歩数を読み直す。
+ * メインの画面。日本地図に、これまでにずらしたものを出す。
+ * 下のカードには、ふだんはいまの場所を出し、ピンをタップするとその地点の名物を出す。
+ * 右上の歯車から設定画面（SettingsActivity）を開く。開くたびに歩数を読み直す。
  */
-public class MainActivity extends Activity {
-    private static final int REQ_ACTIVITY = 1;
-    private static final long BONUS_M = 30000; // 題名の長押しで足す、確認用の距離
+public class MainActivity extends Activity implements MapView.Listener {
+    private static final int REQ_PERMISSION = 1;
+    private static final int INK = 0xFF141414;
+    private static final int GRAY = 0xFF5A5A5A;
+    private static final int ACCENT = 0xFFEE7948;
+    private static final int ACCENT_DARK = 0xFFC4501F;
 
-    private TextView permissionStatus;
-    private Button permissionButton;
-    private Button healthButton;
-    private TextView journeyStatus;
-    private TextView strideStatus;
-    private TextView passedList;
+    private Typeface black, bold;
+    private MapView map;
+    private LinearLayout card;
+    private TextView subtitle;
+    private int picked = -1;
+    private int shownIndex = -1, shownLap = -1; // 地図の見せる範囲を決めたときの場所
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        int pad = dp(24);
+        black = getResources().getFont(R.font.zen_maru_black);
+        bold = getResources().getFont(R.font.zen_maru_bold);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad * 2, pad, pad);
+        root.setBackgroundColor(0xFFFFFFFF);
+        root.setFitsSystemWindows(true);
 
-        TextView title = text("よこめぐり", 22, 0);
-        // 表示の確認用。長押しすると 30km 進む（「旅をやり直す」で消える）
-        title.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                StepStore.addBonus(MainActivity.this, BONUS_M);
-                Toast.makeText(MainActivity.this, "確認用に 30km 進めました", Toast.LENGTH_SHORT).show();
-                StepWidgetProvider.updateAll(MainActivity.this);
-                show();
-                return true;
-            }
-        });
-        root.addView(title);
-        root.addView(text("歩いたぶんだけ、よこずらしが日本を西の端から東の端へ進みます。", 13, dp(6)));
-
-        root.addView(text("歩数", 16, pad));
-        permissionStatus = text("", 14, dp(6));
-        root.addView(permissionStatus);
-        permissionButton = button("歩数の読み取りを許可する");
-        permissionButton.setOnClickListener(new View.OnClickListener() {
+        // 見出し：題名と、ずらしたものの数・距離。右に設定の歯車
+        FrameLayout header = new FrameLayout(this);
+        LinearLayout titles = new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        titles.setPadding(dp(16), dp(14), dp(64), dp(10));
+        titles.addView(text("これまでにずらしたもの", black, 20, INK));
+        subtitle = text("", bold, 11, GRAY);
+        titles.addView(subtitle);
+        header.addView(titles);
+        GearView gear = new GearView(this);
+        FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.END | Gravity.TOP);
+        glp.topMargin = dp(8);
+        glp.rightMargin = dp(8);
+        gear.setContentDescription("設定");
+        gear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                requestPermissions(new String[]{StepReader.PERMISSION_STEPS,
-                        StepReader.PERMISSION_BACKGROUND}, REQ_ACTIVITY);
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
-        root.addView(permissionButton);
-        healthButton = button("ヘルスコネクトを開く");
-        healthButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    startActivity(new Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"));
-                } catch (RuntimeException e) {
-                    Toast.makeText(MainActivity.this, "ヘルスコネクトを開けませんでした。端末の設定から開いてください",
-                            Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-        root.addView(healthButton);
+        header.addView(gear, glp);
+        root.addView(header);
 
-        root.addView(text("旅のようす", 16, pad));
-        journeyStatus = text("", 14, dp(6));
-        root.addView(journeyStatus);
-        Button reread = button("いま読み直す");
-        reread.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                read();
-            }
-        });
-        root.addView(reread);
+        // 地図と、その下に重なるカード
+        FrameLayout body = new FrameLayout(this);
+        map = new MapView(this);
+        map.setListener(this);
+        map.setBottomInset(dp(190));
+        body.addView(map, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(16));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xFFFFFFFF);
+        bg.setStroke(dp(2), INK);
+        bg.setCornerRadius(dp(16));
+        card.setBackground(bg);
+        card.setClickable(true); // カードの上のタップを地図に通さない
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
+        clp.setMargins(dp(12), 0, dp(12), dp(12));
+        body.addView(card, clp);
+        root.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        root.addView(text("歩幅", 16, pad));
-        strideStatus = text("", 14, dp(6));
-        root.addView(strideStatus);
-        LinearLayout strideRow = new LinearLayout(this);
-        strideRow.setOrientation(LinearLayout.HORIZONTAL);
-        strideRow.addView(strideButton("− 5cm", -5));
-        strideRow.addView(strideButton("+ 5cm", 5));
-        root.addView(strideRow);
-
-        root.addView(text("ウィジェット", 16, pad));
-        Button add = button("ホーム画面にウィジェットを追加");
-        add.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                AppWidgetManager manager = AppWidgetManager.getInstance(MainActivity.this);
-                if (manager.isRequestPinAppWidgetSupported()) {
-                    manager.requestPinAppWidget(
-                            new ComponentName(MainActivity.this, StepWidgetProvider.class), null, null);
-                } else {
-                    Toast.makeText(MainActivity.this,
-                            "ホーム画面を長押しして、ウィジェットの一覧から追加してください",
-                            Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-        root.addView(add);
-        root.addView(text("ウィジェットのまるい矢印のマークをタップすると、歩数を読み直します。"
-                + "オレンジの帯をタップすると名物をブラウザで検索し、"
-                + "そのほかの場所をタップするとこの画面が開きます。", 13, dp(6)));
-
-        root.addView(text("これまでにずらしたもの", 16, pad));
-        passedList = text("", 14, dp(6));
-        root.addView(passedList);
-
-        root.addView(text("やり直し", 16, pad));
-        Button restart = button("旅をやり直す");
-        restart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                confirmRestart();
-            }
-        });
-        root.addView(restart);
-
-        root.addView(text("歩数はヘルスコネクトから読み、この端末の中だけに保存します。"
-                + "距離は「歩数×歩幅」、道のりは地点どうしの直線距離です。", 13, pad));
-
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(root);
-        setContentView(scroll);
+        setContentView(root);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         show();
-        read();
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
-        // onResume がこのあとに呼ばれ、そこで読み直す
-    }
-
-    private void read() {
         StepReader.read(this, new Runnable() {
             @Override
             public void run() {
@@ -168,109 +109,172 @@ public class MainActivity extends Activity {
         });
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        // onResume がこのあとに呼ばれ、そこで読み直す
+    }
+
+    /** 地図とカードを、いまの旅のようすで描き直す。 */
     private void show() {
+        Journey j = Journey.at(StepStore.distanceM(this));
+        int n = Route.AT_M.length;
+        boolean around = j.lap > 1; // 1周以上していれば、すべての地点をずらし終わっている
+        int[] visited = new int[around ? n : j.index];
+        for (int i = 0; i < visited.length; i++) visited[i] = i;
+        map.setJourney(j.index, j.progress, j.pref, visited, around ? n - 1 : j.index);
+        map.setPicked(picked);
+        if (j.index != shownIndex || j.lap != shownLap) {
+            // 進んでいたら、通ったところがぜんぶ見える範囲に合わせ直す
+            shownIndex = j.index;
+            shownLap = j.lap;
+            map.fit();
+        }
+        int finished = Math.max(0, PassLog.passedCount(j.distanceM) - 1);
+        subtitle.setText("ずらしたもの " + finished + " ・ " + Journey.km(j.distanceM) + "km");
+        if (picked >= 0) showPicked(picked);
+        else showCurrent(j);
+    }
+
+    @Override
+    public void onPick(int index) {
+        picked = index;
+        map.setPicked(index);
+        showPicked(index);
+    }
+
+    @Override
+    public void onPickNone() {
+        if (picked < 0) return;
+        picked = -1;
+        map.setPicked(-1);
+        showCurrent(Journey.at(StepStore.distanceM(this)));
+    }
+
+    /** カード：いまの場所。歩数の読み取りが許可されていなければ、許可を求める。 */
+    private void showCurrent(Journey j) {
+        card.removeAllViews();
         int status = StepReader.status(this);
         if (status == StepReader.UNSUPPORTED) {
-            permissionStatus.setText("この端末では使えません。ヘルスコネクトが本体に入っている Android 14 以上が必要です。");
-            permissionButton.setVisibility(View.GONE);
-            healthButton.setVisibility(View.GONE);
-        } else if (status == StepReader.NO_PERMISSION) {
-            permissionStatus.setText("ヘルスコネクトの歩数を読む許可がありません。許可すると、歩いたぶんだけ旅が進みます。\n"
-                    + "ボタンを押しても何も出ないときは、ヘルスコネクトを開いて「アプリの権限」からこのアプリに歩数を許可してください。");
-            permissionButton.setVisibility(View.VISIBLE);
-            healthButton.setVisibility(View.VISIBLE);
-        } else {
-            long read = StepStore.readTime(this);
-            boolean background = StepReader.canReadInBackground(this);
-            permissionStatus.setText("許可済み。" + (read == 0 ? "まだ歩数を読めていません。"
-                    : "最後に読めたのは " + when(read) + "。")
-                    + (background ? "\nこの画面を閉じていても、約15分ごとに読みます。"
-                    : "\nバックグラウンドでの読み取りが許可されていないので、歩数はこの画面を開いたときにだけ進みます。"
-                    + "ヘルスコネクトでこのアプリの「バックグラウンドでのデータの読み取り」を許可すると、閉じていても進みます。")
-                    + "\n歩数が0のままのときは、歩数を記録しているアプリや時計が、ヘルスコネクトに歩数を書きこむ設定になっているか確かめてください。");
-            permissionButton.setVisibility(background ? View.GONE : View.VISIBLE);
-            permissionButton.setText(background ? "歩数の読み取りを許可する" : "バックグラウンドでの読み取りを許可する");
-            healthButton.setVisibility(View.VISIBLE);
+            card.addView(text("この端末では使えません", black, 16, ACCENT_DARK));
+            card.addView(spaced(text("ヘルスコネクトが本体に入っている Android 14 以上が必要です。", bold, 12.5f, INK), 8));
+            return;
         }
-
-        int stride = StepStore.stride(this);
-        long total = StepStore.total(this);
-        Journey j = Journey.at(StepStore.distanceM(this));
-        StringBuilder s = new StringBuilder();
-        s.append(j.pref).append(" ").append(j.place).append(j.lap > 1 ? "（" + j.lap + "周目）" : "").append("\n");
-        s.append(j.text).append("\n");
-        s.append(j.sea ? "船で" : "").append(j.next).append("まで あと").append(Journey.km(j.toNextM)).append("km\n\n");
-        s.append("累計 ").append(Journey.km(j.distanceM)).append("km（")
-                .append(String.format("%,d", total)).append("歩）\n");
-        s.append("きょう ").append(String.format("%,d", StepStore.today(this))).append("歩\n");
-        long start = StepStore.startTime(this);
-        s.append(start == 0 ? "まだ出発していません" : "出発 " + when(start));
-        s.append("\nゴールの納沙布岬まで ").append(Route.AT_M[Route.AT_M.length - 1] / 1000).append("km");
-        journeyStatus.setText(s);
-
-        strideStatus.setText("1歩 " + stride + "cm（1万歩で " + Journey.km(StepStore.steps2m(10000, stride))
-                + "km）\n歩幅を変えると、これまでの距離も計算し直します。");
-
-        StringBuilder passed = new StringBuilder();
-        for (int i = j.index - 1; i >= 0; i--) {
-            passed.append(Route.ITEM[i]).append("（").append(Route.NAME[i]).append("）\n");
+        if (status == StepReader.NO_PERMISSION) {
+            card.addView(text("歩数の読み取りが許可されていません", black, 16, ACCENT_DARK));
+            card.addView(spaced(text("許可すると、歩いたぶんだけよこずらしが日本を進みます。", bold, 12.5f, INK), 8));
+            card.addView(spaced(pill("歩数の読み取りを許可する", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    requestPermissions(new String[]{StepReader.PERMISSION_STEPS,
+                            StepReader.PERMISSION_BACKGROUND}, REQ_PERMISSION);
+                }
+            }), 12));
+            return;
         }
-        passedList.setText(passed.length() == 0 ? "まだありません。次の地点に着くと、ここに増えていきます。"
-                : passed.toString().trim());
+        card.addView(text("いま" + (j.lap > 1 ? "（" + j.lap + "周目）" : ""), bold, 11, GRAY));
+        card.addView(spaced(text(j.pref + " " + j.place, black, 17, ACCENT_DARK), 2));
+        card.addView(spaced(text(j.text, bold, 12.5f, INK), 8));
+        card.addView(spaced(text((j.sea ? "船で" : "") + j.next + "まで あと" + Journey.km(j.toNextM) + "km",
+                bold, 11, GRAY), 8));
     }
 
-    private void confirmRestart() {
-        new AlertDialog.Builder(this)
-                .setMessage("累計の歩数を0に戻し、与那国島から出発し直します。元には戻せません。")
-                .setPositiveButton("やり直す", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        StepStore.restart(MainActivity.this);
-                        StepWidgetProvider.updateAll(MainActivity.this);
-                        show();
-                    }
-                })
-                .setNegativeButton("やめる", null)
-                .show();
-    }
-
-    private Button strideButton(String label, final int change) {
-        Button b = button(label);
-        b.setOnClickListener(new View.OnClickListener() {
+    /** カード：タップしたピンの地点。名物、ずらした文、ずらし終わった日、検索のボタン。 */
+    private void showPicked(int i) {
+        card.removeAllViews();
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.BOTTOM);
+        TextView place = text(Route.PREF[i] + " " + Route.NAME[i], black, 16, ACCENT_DARK);
+        row.addView(place, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        long day = PassLog.finishedDay(PassLog.days(this), i);
+        row.addView(text(day < 0 ? "日付を調べています" : date(day) + " ずらし終わり", bold, 10, GRAY));
+        card.addView(row);
+        card.addView(spaced(text(Route.ITEM[i], black, 19, INK), 6));
+        card.addView(spaced(text(pastTense(Route.TEXT[i]), bold, 12.5f, INK), 6));
+        final String item = Route.ITEM[i], pref = Route.PREF[i];
+        card.addView(spaced(pill(item + "を調べる", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                StepStore.setStride(MainActivity.this, StepStore.stride(MainActivity.this) + change);
-                StepWidgetProvider.updateAll(MainActivity.this);
-                show();
+                Intent open = new Intent(Intent.ACTION_VIEW, StepWidgetProvider.searchUrl(item, pref));
+                startActivity(open);
             }
-        });
-        return b;
+        }), 12));
     }
 
-    private static String when(long time) {
-        return new SimpleDateFormat("M月d日 H:mm", Locale.JAPAN).format(new Date(time));
+    /** 「〜ずらしています....」を「〜ずらしました」にする。 */
+    static String pastTense(String s) {
+        String t = s;
+        while (t.endsWith(".") || t.endsWith("…") || t.endsWith("。")) t = t.substring(0, t.length() - 1);
+        return t.replace("ずらしています", "ずらしました").replace("にしています", "にしました");
     }
 
-    private TextView text(String s, float size, int topMargin) {
+    private static String date(long epochDay) {
+        LocalDate d = LocalDate.ofEpochDay(epochDay);
+        return d.getYear() + "年" + d.getMonthValue() + "月" + d.getDayOfMonth() + "日";
+    }
+
+    private TextView text(String s, Typeface face, float sp, int color) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextSize(size);
-        t.setPadding(0, topMargin, 0, 0);
+        t.setTypeface(face);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setIncludeFontPadding(false);
+        t.setEllipsize(TextUtils.TruncateAt.END);
         return t;
     }
 
-    private Button button(String s) {
-        Button b = new Button(this);
-        b.setText(s);
-        b.setAllCaps(false);
+    private View spaced(View v, int topDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(8);
-        b.setLayoutParams(lp);
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(topDp);
+        v.setLayoutParams(lp);
+        return v;
+    }
+
+    /** アクセントの色の、角の丸いボタン（ウィジェットの帯と同じ見た目）。 */
+    private TextView pill(String s, View.OnClickListener click) {
+        TextView b = text(s, bold, 13, INK);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(18), dp(10), dp(18), dp(10));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(ACCENT);
+        bg.setStroke(dp(2), INK);
+        bg.setCornerRadius(dp(20));
+        b.setBackground(bg);
+        b.setOnClickListener(click);
         return b;
     }
 
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density);
+    private int dp(float v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    /** 設定の歯車。墨の線で描く。 */
+    private static class GearView extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        GearView(Context ctx) {
+            super(ctx);
+            p.setColor(INK);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            setClickable(true);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float d = getResources().getDisplayMetrics().density;
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = 8 * d;
+            p.setStrokeWidth(1.8f * d);
+            c.drawCircle(cx, cy, r, p);
+            c.drawCircle(cx, cy, 3.2f * d, p);
+            p.setStrokeWidth(2.6f * d);
+            for (int k = 0; k < 8; k++) {
+                double a = Math.toRadians(k * 45);
+                float cos = (float) Math.cos(a), sin = (float) Math.sin(a);
+                c.drawLine(cx + r * cos, cy + r * sin, cx + (r + 3 * d) * cos, cy + (r + 3 * d) * sin, p);
+            }
+        }
     }
 }

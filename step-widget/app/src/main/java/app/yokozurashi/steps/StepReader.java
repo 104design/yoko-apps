@@ -6,6 +6,9 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Calendar;
 
 /**
@@ -79,7 +82,12 @@ public class StepReader {
                             return;
                         }
                         StepStore.update(ctx, open, today, now);
-                        close(ctx, closed, finish);
+                        close(ctx, closed, new Runnable() {
+                            @Override
+                            public void run() {
+                                fillPassDays(ctx, finish);
+                            }
+                        });
                     }
                 });
             }
@@ -97,6 +105,27 @@ public class StepReader {
             @Override
             public void done(long steps) {
                 if (steps >= 0) StepStore.close(ctx, closed, until, steps);
+                finish.run();
+            }
+        });
+    }
+
+    /**
+     * まだ日付のない地点があれば、ヘルスコネクトの日ごとの歩数から日付を割り出す（地図の「ずらし終わった日」）。
+     * 読めなかったときは何もしない。次に読めたときにまた割り出す。
+     */
+    private static void fillPassDays(final Context ctx, final Runnable finish) {
+        if (!PassLog.needsDates(ctx)) {
+            finish.run();
+            return;
+        }
+        long start = StepStore.startTime(ctx);
+        final LocalDate from = start == 0 ? LocalDate.now()
+                : Instant.ofEpochMilli(start).atZone(ZoneId.systemDefault()).toLocalDate();
+        HealthSteps.daily(ctx, from, LocalDate.now(), new HealthSteps.DailyResult() {
+            @Override
+            public void done(long[] steps) {
+                if (steps != null) PassLog.fill(ctx, from, steps);
                 finish.run();
             }
         });
