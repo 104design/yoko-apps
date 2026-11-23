@@ -79,14 +79,14 @@ public class MainActivity extends Activity implements MapView.Listener {
         body.addView(map, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // 現在地ボタン：開いたときの表示（いまの場所がまん中）に戻す
+        // 現在地ボタン：開いたときの表示（いまの場所がまん中）と、いまの場所に寄った表示を、押すたびに切り替える
         LocateView locate = new LocateView(this);
         locate.setContentDescription("現在地");
         locate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 onPickNone();
-                map.goHome();
+                map.locate();
             }
         });
         FrameLayout.LayoutParams llp = new FrameLayout.LayoutParams(dp(44), dp(44), Gravity.END | Gravity.TOP);

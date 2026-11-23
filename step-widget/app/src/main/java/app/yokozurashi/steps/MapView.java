@@ -1,5 +1,7 @@
 package app.yokozurashi.steps;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -44,7 +46,12 @@ public class MapView extends View {
     private static final float PIN_H = 17, PIN_PICKED_H = 26, PIN_NOW_H = 28; // ピンの高さ（dp）
     private static final float CLUSTER_CELL = 34; // この大きさ（dp）のます目に入るピンを1つにまとめる
     private static final float PINCH_GAIN = 2;    // ピンチの効き。2 なら指の動きの2倍の勢いで拡大・縮小する
-    private static final long MOVE_MS = 350;      // 現在地ボタンで、開いたときの表示へ戻るまでの時間
+    private static final long MOVE_MS = 350;      // 現在地ボタンで、表示が切り替わるまでの時間
+    private static final float CLOSE_SPAN = 1.0f; // 現在地ボタンの2回目で寄るときに見せる高さ（緯度の度）
+
+    // いまの表示が、現在地ボタンのどの表示か。指で動かしたり拡大・縮小したりすると FREE になる
+    private static final int FREE = 0, HOME = 1, CLOSE = 2;
+    private int view = FREE;
     private static final float MIN_SPAN = 2.2f;   // はじめに見せる範囲の、いちばん狭い高さ（緯度の度）
     // 線の揺らし方（dp）。揺れの大きさ、揺れの波の長さ、点を打ち直す間隔
     private static final float WOBBLE_AMP = 1.3f, WOBBLE_LEN = 14, WOBBLE_STEP = 4;
@@ -104,6 +111,7 @@ public class MapView extends View {
             @Override
             public boolean onScale(ScaleGestureDetector d) {
                 // 指の動きより大きく効かせる（同じ動きで、拡大・縮小の度合いが PINCH_GAIN 乗になる）
+                view = FREE;
                 zoom((float) Math.pow(d.getScaleFactor(), PINCH_GAIN), d.getFocusX(), d.getFocusY());
                 return true;
             }
@@ -116,6 +124,7 @@ public class MapView extends View {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float dx, float dy) {
+                view = FREE;
                 tx -= dx;
                 ty -= dy;
                 clamp();
@@ -125,6 +134,7 @@ public class MapView extends View {
 
             @Override
             public boolean onDoubleTap(MotionEvent e) {
+                view = FREE;
                 zoom(2, e.getX(), e.getY());
                 return true;
             }
@@ -191,16 +201,24 @@ public class MapView extends View {
         ty = home[2];
         // clamp() はしない。いまの場所は日本の中にあるので、まん中に置けば日本が画面の外へ出ることはない
         fitted = true;
+        view = HOME;
         invalidate();
     }
 
     private ValueAnimator moving;
 
-    /** 現在地ボタン：開いたときの表示へ、なめらかに戻る。 */
-    public void goHome() {
+    /**
+     * 現在地ボタン。開いたときの表示（HOME）にいれば、いまの場所に寄った表示（CLOSE）へ。
+     * それ以外（寄った表示にいるとき、指で動かしたあと）は、開いたときの表示へ。なめらかに切り替える。
+     */
+    public void locate() {
         if (getWidth() == 0) return;
+        if (view == HOME) moveTo(close(), CLOSE);
+        else moveTo(home(), HOME);
+    }
+
+    private void moveTo(final float[] home, final int nextView) {
         if (moving != null) moving.cancel();
-        final float[] home = home();
         final float s0 = scale, x0 = tx, y0 = ty;
         // いまの場所が画面の上でまっすぐ動くよう、大きさは比で、位置は「いまの場所の画面の座標」でつなぐ
         final float px0 = nowX * s0 + x0, py0 = nowY * s0 + y0;
@@ -217,8 +235,29 @@ public class MapView extends View {
                 invalidate();
             }
         });
+        moving.addListener(new AnimatorListenerAdapter() {
+            private boolean canceled;
+
+            @Override
+            public void onAnimationCancel(Animator a) {
+                canceled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator a) {
+                view = canceled ? FREE : nextView;
+            }
+        });
+        view = FREE;
         moving.start();
         fitted = true;
+    }
+
+    /** いまの場所をまん中に置き、縦に CLOSE_SPAN（緯度の度）ぶんが入るまで寄った表示 {scale, tx, ty}。 */
+    private float[] close() {
+        float availH = getHeight() - bottomInset - 64 * dp;
+        float s = Math.max(minScale(), Math.min(maxScale(), availH / CLOSE_SPAN));
+        return new float[]{s, getWidth() / 2f - nowX * s, (getHeight() - bottomInset) / 2f - nowY * s};
     }
 
     /** 開いたときの表示の、大きさと位置 {scale, tx, ty}。 */
@@ -292,6 +331,7 @@ public class MapView extends View {
         if (hit == null) {
             if (listener != null) listener.onPickNone();
         } else if (hit.count > 1) {
+            view = FREE;
             zoom(2.5f, hit.x, hit.y); // まとめたピンは、そこへ寄って拡大する
         } else if (listener != null) {
             listener.onPick(hit.index);
