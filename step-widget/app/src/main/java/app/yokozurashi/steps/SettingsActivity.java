@@ -31,6 +31,8 @@ public class SettingsActivity extends Activity {
     private Button healthButton;
     private TextView journeyStatus;
     private TextView strideStatus;
+    private LinearLayout lapsBox;
+    private LinearLayout bonusBox;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +49,8 @@ public class SettingsActivity extends Activity {
             @Override
             public boolean onLongClick(View v) {
                 StepStore.addBonus(SettingsActivity.this, BONUS_M);
-                Toast.makeText(SettingsActivity.this, "確認用に 30km 進めました", Toast.LENGTH_SHORT).show();
+                Toast.makeText(SettingsActivity.this, "確認用に 30km 進めました（通った日の記録には入りません）",
+                        Toast.LENGTH_SHORT).show();
                 StepWidgetProvider.updateAll(SettingsActivity.this);
                 show();
                 return true;
@@ -123,6 +126,16 @@ public class SettingsActivity extends Activity {
         root.addView(text("ウィジェットのまるい矢印のマークをタップすると、歩数を読み直します。"
                 + "オレンジの帯をタップすると名物をブラウザで検索し、"
                 + "そのほかの場所をタップすると地図の画面が開きます。", 13, dp(6)));
+
+        // これまでの周（ゴールしたあとに出す）。押すと、その周の地図を開く
+        lapsBox = new LinearLayout(this);
+        lapsBox.setOrientation(LinearLayout.VERTICAL);
+        root.addView(lapsBox);
+
+        // 確認用に進めた距離（あるときだけ出す）
+        bonusBox = new LinearLayout(this);
+        bonusBox.setOrientation(LinearLayout.VERTICAL);
+        root.addView(bonusBox);
 
         root.addView(text("やり直し", 16, pad));
         Button restart = button("旅をやり直す");
@@ -205,8 +218,77 @@ public class SettingsActivity extends Activity {
         s.append("\nゴールの納沙布岬まで ").append(Route.AT_M[Route.AT_M.length - 1] / 1000).append("km");
         journeyStatus.setText(s);
 
+        showLaps();
+        showBonus();
+
         strideStatus.setText("1歩 " + stride + "cm（1万歩で " + Journey.km(StepStore.steps2m(10000, stride))
                 + "km）\n歩幅を変えると、これまでの距離も計算し直します。");
+    }
+
+    /** これまでの周。ゴールした周ごとに、その周の地図を開くボタンを出す。 */
+    private void showLaps() {
+        lapsBox.removeAllViews();
+        int done = PassLog.passedCount(StepStore.distanceM(this)) / Route.AT_M.length;
+        if (done == 0) return;
+        int pad = dp(24);
+        lapsBox.addView(text("これまでの周", 16, pad));
+        long[] days = PassLog.days(this);
+        for (int lap = 0; lap < done; lap++) {
+            long goal = PassLog.goalDay(days, lap);
+            Button b = button((lap + 1) + "周目の地図（" + (goal < 0 ? "ゴールの日付なし"
+                    : java.time.LocalDate.ofEpochDay(goal).toString().replace('-', '/') + " ゴール") + "）");
+            final int which = lap;
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(SettingsActivity.this, MainActivity.class)
+                            .putExtra(MainActivity.EXTRA_LAP, which));
+                }
+            });
+            lapsBox.addView(b);
+        }
+    }
+
+    /**
+     * 確認用の欄。歩かなくても地点や周の切り替わりを見られるよう、距離を足すボタンを置く。
+     * 足した距離は地図とウィジェットには出るが、通った日の記録には入らない。題名の長押しでも 30km 進む。
+     */
+    private void showBonus() {
+        bonusBox.removeAllViews();
+        long bonus = StepStore.bonusM(this);
+        bonusBox.addView(text("確認用", 16, dp(24)));
+        bonusBox.addView(text((bonus > 0 ? "確認用に進めた距離 " + Journey.km(bonus) + "km。" : "")
+                + "確認用に進めた距離は、地図とウィジェットには出ますが、通った日の記録には入りません。", 14, dp(6)));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.addView(bonusButton("30km 進む", BONUS_M));
+        // 1周ぶん（ゴールのあとの休みを含む）。2周目の地図や「これまでの周」を見るのに使う
+        row.addView(bonusButton("1周ぶん進む（" + Route.LAP_M / 1000 + "km）", Route.LAP_M));
+        bonusBox.addView(row);
+        if (bonus <= 0) return;
+        Button clear = button("確認用の距離を消す");
+        clear.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                StepStore.clearBonus(SettingsActivity.this);
+                StepWidgetProvider.updateAll(SettingsActivity.this);
+                show();
+            }
+        });
+        bonusBox.addView(clear);
+    }
+
+    private Button bonusButton(String label, final long meters) {
+        Button b = button(label);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                StepStore.addBonus(SettingsActivity.this, meters);
+                StepWidgetProvider.updateAll(SettingsActivity.this);
+                show();
+            }
+        });
+        return b;
     }
 
     private void confirmRestart() {

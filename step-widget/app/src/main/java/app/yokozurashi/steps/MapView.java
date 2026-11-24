@@ -1,5 +1,7 @@
 package app.yokozurashi.steps;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -10,6 +12,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.os.SystemClock;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -21,7 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 日本地図。いまいる都道府県を塗り、通った道すじと、ずらし終わった地点のよこずらしのピンを出す。
+ * 日本地図。いまいる都道府県を薄いオレンジで塗り、通った道すじと、ずらし終わった地点のピン（チェックの印）を出す。
+ * いまの場所には、よこずらしを立てて、ウィジェットと同じ9コマで動かす。
  * 県の形の線は、手描きのように少し揺らして描く（wobble）。
  * 指で動かす・広げる・ダブルタップで拡大できる。広く見ているときは、近いピンをまとめて数を添える。
  * ピンをタップすると Listener に知らせる。まとめたピンをタップすると、そこへ寄って拡大する。
@@ -36,26 +40,36 @@ public class MapView extends View {
     }
 
     private static final int INK = 0xFF141414;
-    private static final int ACCENT = 0xFFEE7948;
+    private static final int ACCENT_PALE = 0xFFFCE4D9; // いまの県の塗り
     private static final int ACCENT_DARK = 0xFFC4501F;
     private static final int SEA = 0xFFF3F1EC;
     private static final int LAND = 0xFFFFFFFF;
 
-    private static final float PIN_H = 17, PIN_PICKED_H = 26, PIN_NOW_H = 28; // ピンの高さ（dp）
-    private static final float CLUSTER_CELL = 34; // この大きさ（dp）のます目に入るピンを1つにまとめる
+    private static final float PIN_H = 24, PIN_PICKED_H = 32, GROUP_H = 28; // ピンの高さ（dp）。ピンの先が地点
+    // まとめたピン（pin_group.png）の、数を書く丸のまん中と半径。絵の幅・高さ・高さに対する割合（tools/make_pins.py）
+    private static final float GROUP_CX = 0.505f, GROUP_CY = 0.440f, GROUP_R = 0.243f;
+    private static final float NOW_BOX = 46;      // いまの場所のよこずらしの枠（dp、正方形）
+    private static final float NOW_FEET = 0.77f;  // 枠の上から足もとまでの割合（ウィジェットと同じ）
+    private static final long FRAME_MS = 40;      // よこずらしのコマ送りの間隔（ウィジェットと同じ）
+    private static final float CLUSTER_CELL = 40; // この大きさ（dp）のます目に入るピンを1つにまとめる
     private static final float PINCH_GAIN = 2;    // ピンチの効き。2 なら指の動きの2倍の勢いで拡大・縮小する
-    private static final long MOVE_MS = 350;      // 現在地ボタンで、開いたときの表示へ戻るまでの時間
+    private static final long MOVE_MS = 350;      // 現在地ボタンで、表示が切り替わるまでの時間
+    private static final float CLOSE_SPAN = 1.0f; // 現在地ボタンの2回目で寄るときに見せる高さ（緯度の度）
+
+    // いまの表示が、現在地ボタンのどの表示か。指で動かしたり拡大・縮小したりすると FREE になる
+    private static final int FREE = 0, HOME = 1, CLOSE = 2;
+    private int view = FREE;
     private static final float MIN_SPAN = 2.2f;   // はじめに見せる範囲の、いちばん狭い高さ（緯度の度）
     // 線の揺らし方（dp）。揺れの大きさ、揺れの波の長さ、点を打ち直す間隔
     private static final float WOBBLE_AMP = 1.3f, WOBBLE_LEN = 14, WOBBLE_STEP = 4;
 
     private final float dp;
     private final JapanMap map;
-    private final Bitmap pin;
+    private final Bitmap pinDone, pinGroup;
+    private final Bitmap[] frames = new Bitmap[9]; // いまの場所のよこずらしのコマ
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint img = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-    private final Paint badge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint badgeText = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     // 地図の座標から画面（px）への変換：画面 = 地図 × scale + (tx, ty)
@@ -68,6 +82,7 @@ public class MapView extends View {
     private int[] visited = new int[0];      // ずらし終わった地点（Route の番号）
     private final Path route = new Path();   // 通った道すじ（地図の座標）
     private int picked = -1;
+    private boolean showNow = true; // いまの場所のピンを出すか（前の周を見るときは出さない）
     private Listener listener;
 
     /** 描いたピン（タップの当たり判定に使う）。 */
@@ -77,7 +92,9 @@ public class MapView extends View {
     }
 
     private final List<Cluster> clusters = new ArrayList<>();
-    private final Path[] shapes = new Path[48]; // 揺らした県の形（画面の座標）。描くたびに作り直す
+    private final Path[] shapes = new Path[48]; // 揺らした県の形（画面の座標）
+    private float shapeScale = -1, shapeTx, shapeTy; // shapes を作ったときの表示
+    private int shapeW, shapeH;
     private final ScaleGestureDetector scaler;
     private final GestureDetector gestures;
 
@@ -85,25 +102,27 @@ public class MapView extends View {
         super(ctx);
         dp = ctx.getResources().getDisplayMetrics().density;
         map = JapanMap.load(ctx.getResources());
-        Bitmap frame = BitmapFactory.decodeResource(ctx.getResources(), R.drawable.yoko_frame_1);
-        // コマの余白を落とす（tools/make_frames.py の絵で、よこずらしの本体がある範囲）
-        int fw = frame.getWidth(), fh = frame.getHeight();
-        pin = Bitmap.createBitmap(frame, 0, fh * 96 / 285, Math.min(fw, fw * 181 / 285), fh * 122 / 285);
+        pinDone = BitmapFactory.decodeResource(ctx.getResources(), R.drawable.pin_done);
+        pinGroup = BitmapFactory.decodeResource(ctx.getResources(), R.drawable.pin_group);
+        int[] ids = {R.drawable.yoko_frame_1, R.drawable.yoko_frame_2, R.drawable.yoko_frame_3,
+                R.drawable.yoko_frame_4, R.drawable.yoko_frame_5, R.drawable.yoko_frame_6,
+                R.drawable.yoko_frame_7, R.drawable.yoko_frame_8, R.drawable.yoko_frame_9};
+        for (int i = 0; i < ids.length; i++) frames[i] = BitmapFactory.decodeResource(ctx.getResources(), ids[i]);
         for (int i = 0; i < shapes.length; i++) shapes[i] = new Path();
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeJoin(Paint.Join.ROUND);
         line.setStrokeCap(Paint.Cap.ROUND);
-        badge.setStyle(Paint.Style.FILL);
         Typeface black = ctx.getResources().getFont(R.font.zen_maru_black);
         badgeText.setTypeface(black);
         badgeText.setTextAlign(Paint.Align.CENTER);
         badgeText.setColor(INK);
-        badgeText.setTextSize(8 * dp);
+        badgeText.setTextSize(13 * dp);
 
         scaler = new ScaleGestureDetector(ctx, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
             @Override
             public boolean onScale(ScaleGestureDetector d) {
                 // 指の動きより大きく効かせる（同じ動きで、拡大・縮小の度合いが PINCH_GAIN 乗になる）
+                view = FREE;
                 zoom((float) Math.pow(d.getScaleFactor(), PINCH_GAIN), d.getFocusX(), d.getFocusY());
                 return true;
             }
@@ -116,6 +135,7 @@ public class MapView extends View {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float dx, float dy) {
+                view = FREE;
                 tx -= dx;
                 ty -= dy;
                 clamp();
@@ -125,6 +145,7 @@ public class MapView extends View {
 
             @Override
             public boolean onDoubleTap(MotionEvent e) {
+                view = FREE;
                 zoom(2, e.getX(), e.getY());
                 return true;
             }
@@ -154,6 +175,7 @@ public class MapView extends View {
      * @param reached  道すじをどこまで通ったか（Route の番号。周回していれば最後まで）
      */
     public void setJourney(int index, float progress, String pref, int[] visited, int reached) {
+        showNow = true;
         currentPref = JapanMap.code(pref);
         this.visited = visited;
         int next = Math.min(index + 1, Route.LAT.length - 1);
@@ -168,6 +190,30 @@ public class MapView extends View {
             else route.lineTo(x, y);
         }
         if (reached == index) route.lineTo(nowX, nowY);
+        invalidate();
+    }
+
+    /**
+     * 前の周を見るとき。いまの場所のピンと県の塗りは出さず、道すじをぜんぶ引く。
+     * 開いたときの表示は、ずらし終わった地点がぜんぶ入る範囲のまん中。
+     */
+    public void setFinishedLap() {
+        int n = Route.LAT.length;
+        int[] all = new int[n];
+        for (int i = 0; i < n; i++) all[i] = i;
+        setJourney(n - 1, 0, "", all, n - 1);
+        showNow = false;
+        currentPref = 0;
+        float minX = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, minY = Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            float x = JapanMap.x(Route.LON[i]), y = JapanMap.y(Route.LAT[i]);
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        }
+        nowX = (minX + maxX) / 2; // 見せる範囲のまん中として使う（ピンは出さない）
+        nowY = (minY + maxY) / 2;
         invalidate();
     }
 
@@ -191,16 +237,24 @@ public class MapView extends View {
         ty = home[2];
         // clamp() はしない。いまの場所は日本の中にあるので、まん中に置けば日本が画面の外へ出ることはない
         fitted = true;
+        view = HOME;
         invalidate();
     }
 
     private ValueAnimator moving;
 
-    /** 現在地ボタン：開いたときの表示へ、なめらかに戻る。 */
-    public void goHome() {
+    /**
+     * 現在地ボタン。開いたときの表示（HOME）にいれば、いまの場所に寄った表示（CLOSE）へ。
+     * それ以外（寄った表示にいるとき、指で動かしたあと）は、開いたときの表示へ。なめらかに切り替える。
+     */
+    public void locate() {
         if (getWidth() == 0) return;
+        if (view == HOME) moveTo(close(), CLOSE);
+        else moveTo(home(), HOME);
+    }
+
+    private void moveTo(final float[] home, final int nextView) {
         if (moving != null) moving.cancel();
-        final float[] home = home();
         final float s0 = scale, x0 = tx, y0 = ty;
         // いまの場所が画面の上でまっすぐ動くよう、大きさは比で、位置は「いまの場所の画面の座標」でつなぐ
         final float px0 = nowX * s0 + x0, py0 = nowY * s0 + y0;
@@ -217,8 +271,29 @@ public class MapView extends View {
                 invalidate();
             }
         });
+        moving.addListener(new AnimatorListenerAdapter() {
+            private boolean canceled;
+
+            @Override
+            public void onAnimationCancel(Animator a) {
+                canceled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(Animator a) {
+                view = canceled ? FREE : nextView;
+            }
+        });
+        view = FREE;
         moving.start();
         fitted = true;
+    }
+
+    /** いまの場所をまん中に置き、縦に CLOSE_SPAN（緯度の度）ぶんが入るまで寄った表示 {scale, tx, ty}。 */
+    private float[] close() {
+        float availH = getHeight() - bottomInset - 64 * dp;
+        float s = Math.max(minScale(), Math.min(maxScale(), availH / CLOSE_SPAN));
+        return new float[]{s, getWidth() / 2f - nowX * s, (getHeight() - bottomInset) / 2f - nowY * s};
     }
 
     /** 開いたときの表示の、大きさと位置 {scale, tx, ty}。 */
@@ -283,7 +358,7 @@ public class MapView extends View {
         Cluster hit = null;
         float best = 22 * dp;
         for (Cluster c : clusters) {
-            float d = (float) Math.hypot(c.x - x, c.y - PIN_H * dp / 2 - y);
+            float d = (float) Math.hypot(c.x - x, c.y - (c.count > 1 ? GROUP_H : PIN_H) * dp / 2 - y);
             if (d < best) {
                 best = d;
                 hit = c;
@@ -292,6 +367,7 @@ public class MapView extends View {
         if (hit == null) {
             if (listener != null) listener.onPickNone();
         } else if (hit.count > 1) {
+            view = FREE;
             zoom(2.5f, hit.x, hit.y); // まとめたピンは、そこへ寄って拡大する
         } else if (listener != null) {
             listener.onPick(hit.index);
@@ -306,10 +382,18 @@ public class MapView extends View {
         m.postTranslate(tx, ty);
 
         // 都道府県の形。画面の座標で、線を揺らして作り直す
-        for (int code = 1; code <= 47; code++) buildShape(code);
+        // 揺らした形は、表示の大きさと位置が変わったときだけ作り直す（よこずらしのコマ送りでは作り直さない）
+        if (scale != shapeScale || tx != shapeTx || ty != shapeTy || getWidth() != shapeW || getHeight() != shapeH) {
+            for (int code = 1; code <= 47; code++) buildShape(code);
+            shapeScale = scale;
+            shapeTx = tx;
+            shapeTy = ty;
+            shapeW = getWidth();
+            shapeH = getHeight();
+        }
         fill.setStyle(Paint.Style.FILL);
         for (int code = 1; code <= 47; code++) {
-            fill.setColor(code == currentPref ? ACCENT : LAND);
+            fill.setColor(code == currentPref ? ACCENT_PALE : LAND);
             c.drawPath(shapes[code], fill);
         }
         line.setColor(0xFF3A3A3A);
@@ -318,8 +402,9 @@ public class MapView extends View {
             if (code != currentPref) c.drawPath(shapes[code], line);
         }
         if (currentPref > 0) {
-            line.setColor(INK);
-            line.setStrokeWidth(1.6f * dp);
+            // いまの県は、薄いオレンジで塗り、ふちを濃いオレンジで太く描く（オレンジのピンが沈まないように）
+            line.setColor(ACCENT_DARK);
+            line.setStrokeWidth(2f * dp);
             c.drawPath(shapes[currentPref], line);
         }
 
@@ -354,18 +439,23 @@ public class MapView extends View {
             k.x /= k.count;
             k.y /= k.count;
             if (k.x < -cell || k.x > getWidth() + cell || k.y < -cell || k.y > getHeight() + cell) continue;
-            boolean isPicked = k.count == 1 && k.index == picked;
-            drawPin(c, k.x, k.y, isPicked ? PIN_PICKED_H : PIN_H);
-            if (isPicked) {
-                line.setColor(ACCENT_DARK);
-                line.setStrokeWidth(1.6f * dp);
-                c.drawCircle(k.x, k.y, 4 * dp, line);
-            }
-            if (k.count > 1) drawBadge(c, k.x, k.y, k.count);
+            if (k.count > 1) drawGroup(c, k.x, k.y, k.count);
+            else drawPin(c, pinDone, k.x, k.y, k.index == picked ? PIN_PICKED_H : PIN_H);
         }
 
-        // いまの場所
-        drawPin(c, nowX * scale + tx, nowY * scale + ty, PIN_NOW_H);
+        // いまの場所：よこずらしを、足もとを地点に合わせて立て、コマを送る
+        if (showNow) {
+            float box = NOW_BOX * dp, x = nowX * scale + tx, y = nowY * scale + ty;
+            Bitmap f = frames[(int) ((SystemClock.uptimeMillis() / FRAME_MS) % frames.length)];
+            c.drawBitmap(f, null, new RectF(x - box / 2, y - box * NOW_FEET, x + box / 2, y + box * (1 - NOW_FEET)), img);
+            postInvalidateDelayed(FRAME_MS);
+        }
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == VISIBLE) invalidate(); // 隠れていたあいだに止まったコマ送りを、また始める
     }
 
     /**
@@ -431,20 +521,20 @@ public class MapView extends View {
         return (x & 0xffff) / 32767.5f - 1;
     }
 
-    private void drawPin(Canvas c, float x, float y, float hDp) {
+    /** ピンを、先が (x, y) に来るように描く。 */
+    private void drawPin(Canvas c, Bitmap pin, float x, float y, float hDp) {
         float h = hDp * dp, w = h * pin.getWidth() / pin.getHeight();
         c.drawBitmap(pin, null, new RectF(x - w / 2, y - h, x + w / 2, y), img);
     }
 
-    private void drawBadge(Canvas c, float x, float y, int count) {
-        float h = PIN_H * dp, w = h * pin.getWidth() / pin.getHeight();
-        float bx = x + w / 2 - dp, by = y - h + dp, r = 7 * dp;
-        badge.setColor(ACCENT);
-        c.drawCircle(bx, by, r, badge);
-        line.setColor(INK);
-        line.setStrokeWidth(dp);
-        c.drawCircle(bx, by, r, line);
+    /** まとめたピン。丸の中に、まとめた数を書く（3桁になったら字を小さくする）。 */
+    private void drawGroup(Canvas c, float x, float y, int count) {
+        drawPin(c, pinGroup, x, y, GROUP_H);
+        float h = GROUP_H * dp, w = h * pinGroup.getWidth() / pinGroup.getHeight();
+        float cx = x - w / 2 + w * GROUP_CX, cy = y - h + h * GROUP_CY, r = h * GROUP_R;
+        String t = String.valueOf(count);
+        badgeText.setTextSize(r * (t.length() >= 3 ? 0.95f : t.length() == 2 ? 1.2f : 1.45f));
         Paint.FontMetrics fm = badgeText.getFontMetrics();
-        c.drawText(String.valueOf(count), bx, by - (fm.ascent + fm.descent) / 2, badgeText);
+        c.drawText(t, cx, cy - (fm.ascent + fm.descent) / 2, badgeText);
     }
 }

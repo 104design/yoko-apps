@@ -92,7 +92,22 @@ public class StepStore {
 
     /** 旅を始めてから進んだ距離（m）。歩数×歩幅。歩幅を変えると、これまでのぶんも変わる。 */
     public static long distanceM(Context ctx) {
-        return steps2m(total(ctx), stride(ctx)) + Store.prefs(ctx).getLong(BONUS, 0);
+        return realDistanceM(ctx) + bonusM(ctx);
+    }
+
+    /** 確認用の距離を含めない、歩いたぶんだけの距離（m）。通った日の記録（PassLog）はこれで数える。 */
+    public static long realDistanceM(Context ctx) {
+        return steps2m(total(ctx), stride(ctx));
+    }
+
+    /** 確認用に足した距離（m）。 */
+    public static long bonusM(Context ctx) {
+        return Store.prefs(ctx).getLong(BONUS, 0);
+    }
+
+    /** 確認用に足した距離だけを消す。歩いたぶんと通った日の記録はそのまま。 */
+    public static void clearBonus(Context ctx) {
+        Store.prefs(ctx).edit().putLong(BONUS, 0).apply();
     }
 
     public static long steps2m(long steps, int strideCm) {

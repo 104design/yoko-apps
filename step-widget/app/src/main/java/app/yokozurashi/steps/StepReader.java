@@ -126,6 +126,7 @@ public class StepReader {
             @Override
             public void done(long[] steps) {
                 if (steps != null) PassLog.fill(ctx, from, steps);
+                PassLog.setFailed(ctx, steps == null);
                 finish.run();
             }
         });
