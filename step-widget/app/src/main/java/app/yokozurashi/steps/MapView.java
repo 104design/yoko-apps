@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 日本地図。いまいる都道府県を塗り、通った道すじと、ずらし終わった地点のピン（チェックの印）を出す。
+ * 日本地図。いまいる都道府県を薄いオレンジで塗り、通った道すじと、ずらし終わった地点のピン（チェックの印）を出す。
  * いまの場所には、よこずらしを立てて、ウィジェットと同じ9コマで動かす。
  * 県の形の線は、手描きのように少し揺らして描く（wobble）。
  * 指で動かす・広げる・ダブルタップで拡大できる。広く見ているときは、近いピンをまとめて数を添える。
@@ -40,7 +40,7 @@ public class MapView extends View {
     }
 
     private static final int INK = 0xFF141414;
-    private static final int ACCENT = 0xFFEE7948;
+    private static final int ACCENT_PALE = 0xFFFCE4D9; // いまの県の塗り
     private static final int ACCENT_DARK = 0xFFC4501F;
     private static final int SEA = 0xFFF3F1EC;
     private static final int LAND = 0xFFFFFFFF;
@@ -393,7 +393,7 @@ public class MapView extends View {
         }
         fill.setStyle(Paint.Style.FILL);
         for (int code = 1; code <= 47; code++) {
-            fill.setColor(code == currentPref ? ACCENT : LAND);
+            fill.setColor(code == currentPref ? ACCENT_PALE : LAND);
             c.drawPath(shapes[code], fill);
         }
         line.setColor(0xFF3A3A3A);
@@ -402,8 +402,9 @@ public class MapView extends View {
             if (code != currentPref) c.drawPath(shapes[code], line);
         }
         if (currentPref > 0) {
-            line.setColor(INK);
-            line.setStrokeWidth(1.6f * dp);
+            // いまの県は、薄いオレンジで塗り、ふちを濃いオレンジで太く描く（オレンジのピンが沈まないように）
+            line.setColor(ACCENT_DARK);
+            line.setStrokeWidth(2f * dp);
             c.drawPath(shapes[currentPref], line);
         }
 
